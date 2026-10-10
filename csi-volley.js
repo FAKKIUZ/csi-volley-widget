@@ -1592,8 +1592,10 @@ function header(w, d, subtitle, compact, fixed) {
     h.addSpacer()
     return h
   }
-  const t = txt(tt, d.title, 13, C.text, "bold"); t.minimumScaleFactor = fixed ? 1 : 0.6
-  const s = txt(tt, subtitle, 10, C.sub, "semibold"); s.minimumScaleFactor = fixed ? 1 : 0.7
+  // nei grandi (fixed) come nei piccoli e medi: in grande la funzione del widget, sotto il campionato
+  const top = fixed ? subtitle : d.title, bottom = fixed ? d.title : subtitle
+  const t = txt(tt, top, 13, C.text, "bold"); t.minimumScaleFactor = fixed ? 1 : 0.6
+  const s = txt(tt, bottom, 10, C.sub, "semibold"); s.minimumScaleFactor = fixed ? 1 : 0.7
   h.addSpacer()
   return h
 }
