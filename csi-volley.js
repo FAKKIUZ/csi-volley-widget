@@ -1468,12 +1468,12 @@ function header(w, d, subtitle, compact) {
   h.addSpacer()
 }
 
-// Piè di pagina di tutti i widget: orario dell'aggiornamento, centrato.
-// In rosso con ⚠︎ se il sito non ha risposto e si mostrano i dati salvati.
+// Piè di pagina: compare solo se il sito CSI non ha risposto e il widget mostra i dati salvati
 function footer(w, d) {
+  if (!d.fromCache) return
   const when = isToday(d.fetched) ? fmtTime(d.fetched) : `${fmtDate(d.fetched)} ${fmtTime(d.fetched)}`
   const f = w.addStack(); f.addSpacer()
-  txt(f, d.fromCache ? `⚠︎ ${when}` : when, 9, d.fromCache ? C.lose : C.sub)
+  txt(f, `⚠︎ dati delle ${when}`, 9, C.lose, "semibold")
   f.addSpacer()
 }
 
