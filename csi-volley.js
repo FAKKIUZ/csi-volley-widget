@@ -423,8 +423,10 @@ async function buildWidget(d, family, view) {
   // formati oltre il grande (extra large su iPad, verticale alto di iOS 27…): panoramica
   if (!["small", "medium", "large"].includes(family)) { dashboard(w, d); return w }
   if (view === "panoramica") {
-    if (!TEAM || (!myStanding(d) && !d.matches.some(isMyMatch))) { if (family === "large") { panoramaLarge(w, d); return w } return noTeamWidget(w) }
-    ;[teamSmall, teamMedium, panoramaLarge][family === "small" ? 0 : family === "medium" ? 1 : 2](w, d)
+    // senza squadra la panoramica piccola e media ripiegano sulla classifica
+    const noTeam = !TEAM || (!myStanding(d) && !d.matches.some(isMyMatch))
+    const fs = noTeam ? [standingsSmall, standingsMedium, panoramaLarge] : [panoramaSmall, panoramaMedium, panoramaLarge]
+    fs[family === "small" ? 0 : family === "medium" ? 1 : 2](w, d)
     return w
   }
   if (view === "squadra" && !myStanding(d) && !d.matches.some(isMyMatch)) return noTeamWidget(w)
@@ -1079,6 +1081,110 @@ function panoramaLarge(w, d) {
   w.addSpacer()
 }
 
+// ── panoramica piccola: posizione, ultimo risultato e prossima partita ──
+function panoramaSmall(w, d) {
+  const t = teamData(d)
+  const top = w.addStack(); top.centerAlignContent(); top.spacing = 6
+  logo(top, TEAM, 28)
+  const nm = top.addStack(); nm.layoutVertically()
+  const n = txt(nm, TEAM, 12, C.text, "bold"); n.minimumScaleFactor = 0.7
+  if (t.me) {
+    const p = nm.addStack(); p.bottomAlignContent(); p.spacing = 3
+    txt(p, `${t.me.pos}°`, 15, C.hlText, "bold")
+    txt(p, `${t.me.pt} pt`, F_SUB, C.sub, "semibold")
+  }
+  top.addSpacer()
+  const tm = top.addStack(); tm.layoutVertically(); updatedLabel(tm, d); tm.addSpacer()
+  w.addSpacer()
+  if (t.last) {
+    const m = t.last
+    const lr = w.addStack(); lr.centerAlignContent(); lr.spacing = 4
+    lastChip(lr, m)
+    const o = txt(lr, `${isMine(m.home) ? "vs" : "@"} ${opp(m)}`, F_SUB, C.text, "semibold"); o.minimumScaleFactor = 0.7
+    w.addSpacer()
+  }
+  const nx = t.next
+  const lb = txt(w, nx ? `PROSSIMA · ${countdown(nx.ts).toUpperCase()}` : "PROSSIMA", 9, C.sub, "semibold"); lb.minimumScaleFactor = 0.8
+  w.addSpacer(2)
+  if (nx) {
+    const nr = w.addStack(); nr.centerAlignContent(); nr.spacing = 4
+    logo(nr, opp(nx), 13)
+    const o = txt(nr, `${isMine(nx.home) ? "vs" : "@"} ${opp(nx)}`, F_TXT, C.text, "semibold"); o.minimumScaleFactor = 0.7
+    txt(w, `${dayName(nx.ts)} ${fmtDate(nx.ts)} · ${fmtTime(nx.ts)}`, F_SUB, C.sub)
+  } else txt(w, "Nessuna in calendario", F_SUB, C.sub)
+}
+
+// ── panoramica media: a sinistra la squadra con ultima e prossima, a destra la classifica ──
+function panoramaMedium(w, d) {
+  const t = teamData(d)
+  const row = w.addStack(); row.topAlignContent(); row.spacing = 10
+  const leftW = Math.round((INNER - 21) / 2), rightW = INNER - 21 - leftW
+
+  const l = row.addStack(); l.layoutVertically(); l.size = new Size(leftW, 0)
+  const top = l.addStack(); top.centerAlignContent(); top.spacing = 6
+  const ring = top.addStack(); ring.size = new Size(30, 30); ring.cornerRadius = 15
+  ring.borderColor = C.accent; ring.borderWidth = 2; ring.centerAlignContent()
+  logo(ring, TEAM, 24)
+  const nm = top.addStack(); nm.layoutVertically()
+  const n = txt(nm, TEAM, 12, C.text, "bold"); n.minimumScaleFactor = 0.7
+  if (t.me) {
+    const p = nm.addStack(); p.bottomAlignContent(); p.spacing = 3
+    txt(p, `${t.me.pos}°`, 15, C.hlText, "bold")
+    txt(p, `${t.me.pt} pt`, F_SUB, C.sub, "semibold")
+  }
+  top.addSpacer()
+  l.addSpacer(7)
+  if (t.last) {
+    const m = t.last
+    const lr = l.addStack(); lr.centerAlignContent(); lr.spacing = 4; lr.url = matchUrl(m)
+    lastChip(lr, m)
+    logo(lr, opp(m), 13)
+    const o = txt(lr, `${isMine(m.home) ? "vs" : "@"} ${opp(m)}`, F_SUB, C.text, "semibold"); o.minimumScaleFactor = 0.7
+    lr.addSpacer()
+    l.addSpacer(7)
+  }
+  const nx = t.next
+  const lb = txt(l, nx ? `PROSSIMA · ${countdown(nx.ts).toUpperCase()}` : "PROSSIMA", 9, C.sub, "semibold"); lb.minimumScaleFactor = 0.8
+  l.addSpacer(2)
+  if (nx) {
+    const nr = l.addStack(); nr.centerAlignContent(); nr.spacing = 4; nr.url = matchUrl(nx)
+    logo(nr, opp(nx), 13)
+    const o = txt(nr, `${isMine(nx.home) ? "vs" : "@"} ${opp(nx)}`, F_TXT, C.text, "semibold"); o.minimumScaleFactor = 0.7
+    nr.addSpacer()
+    const when = l.addStack(); when.centerAlignContent(); when.spacing = 4
+    const dt = txt(when, `${dayName(nx.ts)} ${fmtDate(nx.ts)} · ${fmtTime(nx.ts)}`, F_SUB, C.sub); dt.minimumScaleFactor = 1
+    const v = venueOf(d, nx)
+    if (v) {
+      when.url = mapsUrl(v)
+      const pin = symbol("mappin.circle.fill", F_SUB)
+      if (pin) { const i = when.addImage(pin); i.imageSize = new Size(F_SUB, F_SUB); i.tintColor = C.accent }
+    }
+    when.addSpacer()
+  } else txt(l, "Nessuna in calendario", F_SUB, C.sub)
+
+  const sep = row.addStack(); sep.size = new Size(1, 120); sep.backgroundColor = C.chip
+
+  const r = row.addStack(); r.layoutVertically(); r.spacing = 2; r.size = new Size(rightW, 0)
+  const hr = r.addStack(); hr.centerAlignContent()
+  sectionLabel(hr, "Classifica"); hr.addSpacer(); updatedLabel(hr, d)
+  r.addSpacer(2)
+  // 5 righe: le prime, o quelle intorno alla tua squadra se è più in basso
+  const s = d.standings, me = myStanding(d), i = me ? s.indexOf(me) : 0
+  const from = Math.max(0, Math.min(i - 2, s.length - 5))
+  const rows = s.slice(from, from + 5)
+  const nameSize = Math.min(F_TXT, fitNames(rows, rightW, F_TXT, 13))
+  for (const x of rows) panoStandingRow(r, x, nameSize)
+  w.addSpacer()
+}
+
+// Risultato dell'ultima partita: V/P e set, verde o rosso
+function lastChip(stack, m) {
+  const wn = won(m)
+  const chip = stack.addStack(); chip.setPadding(1, 5, 1, 5); chip.cornerRadius = 5; chip.backgroundColor = wn ? C.win : C.lose
+  const ct = chip.addText(`${wn ? "V" : "P"} ${homeAway(m)}`); ct.font = Font.boldRoundedSystemFont(F_SUB); ct.textColor = Color.white()
+  return chip
+}
+
 // Riga di classifica della panoramica: posizione, logo, nome e punti con la stessa scala di caratteri
 function panoStandingRow(stack, s, nameSize) {
   const r = stack.addStack(); r.centerAlignContent(); r.spacing = 4; r.setPadding(0, 2, 0, 4)
@@ -1435,7 +1541,7 @@ async function appMenu(d, e) {
     ["Classifica · piccolo", "classifica", "small"], ["Classifica · medio", "classifica", "medium"], ["Classifica · grande", "classifica", "large"],
     ["Risultati · piccolo", "risultati", "small"], ["Risultati · medio", "risultati", "medium"], ["Risultati · grande", "risultati", "large"],
     ["Squadra · piccolo", "squadra", "small"], ["Squadra · medio", "squadra", "medium"], ["Squadra · grande", "squadra", "large"],
-    ["Panoramica · grande", "panoramica", "large"],
+    ["Panoramica · piccolo", "panoramica", "small"], ["Panoramica · medio", "panoramica", "medium"], ["Panoramica · grande", "panoramica", "large"],
   ]
   if (Device.isPad()) opts.push(["Panoramica · tutta pagina", "", "extraLarge"])
   opts.forEach(o => a.addAction(o[0]))
