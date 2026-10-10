@@ -954,9 +954,11 @@ function teamSmall(w, d) {
 function teamMedium(w, d) {
   const t = teamData(d)
   // due colonne alte quanto il widget: gli spazi flessibili distribuiscono i blocchi su tutta l'altezza
-  const H = MED.h - 2
-  const row = w.addStack(); row.topAlignContent(); row.spacing = 10; row.size = new Size(MED.w, H)
-  const leftW = Math.round((MED.w - 21) / 2), rightW = MED.w - 21 - leftW
+  // margini laterali di 11 invece di 14 e stacco di 8 attorno alla linea: le colonne guadagnano ~5 punti
+  w.setPadding(12, 11, 12, 11)
+  const W = MED.w + 6, H = MED.h - 2
+  const row = w.addStack(); row.topAlignContent(); row.spacing = 8; row.size = new Size(W, H)
+  const leftW = Math.round((W - 17) / 2), rightW = W - 17 - leftW
 
   // a sinistra: squadra, numeri e forma, poi chi le sta vicino in classifica
   const l = row.addStack(); l.layoutVertically(); l.size = new Size(leftW, H)
@@ -976,12 +978,13 @@ function teamMedium(w, d) {
     lastRow(r, t.last, true)
     if (t.last.parziali.length) {
       r.addSpacer(2)
-      const p = txt(r, t.last.parziali.map(x => x.join("-")).join(" · "), F_SUB, t.last.ufficioso ? C.uff : C.sub); p.minimumScaleFactor = 0.8
+      const p = txt(r, t.last.parziali.map(x => x.join("-")).join("  "), F_SUB, t.last.ufficioso ? C.uff : C.sub); p.minimumScaleFactor = 0.8
     }
   } else txt(r, "—", F_SUB, C.sub)
   r.addSpacer()
   if (t.next) { nextLines(r, t.next); venueLine(r, d, t.next) }
   else { sectionLabel(r, "Prossima"); txt(r, "Nessuna in calendario", F_SUB, C.sub) }
+  r.addSpacer()
 }
 
 function teamLarge(w, d) {
@@ -1182,9 +1185,11 @@ function nextLines(stack, m) {
 // ── panoramica media: a sinistra la squadra con ultima e prossima, a destra la classifica ──
 function panoramaMedium(w, d) {
   const t = teamData(d)
-  const H = MED.h - 2
-  const row = w.addStack(); row.topAlignContent(); row.spacing = 10; row.size = new Size(MED.w, H)
-  const leftW = Math.round((MED.w - 21) / 2), rightW = MED.w - 21 - leftW
+  // margini laterali di 11 invece di 14 e stacco di 8 attorno alla linea: le colonne guadagnano ~5 punti
+  w.setPadding(12, 11, 12, 11)
+  const W = MED.w + 6, H = MED.h - 2
+  const row = w.addStack(); row.topAlignContent(); row.spacing = 8; row.size = new Size(W, H)
+  const leftW = Math.round((W - 17) / 2), rightW = W - 17 - leftW
 
   // a sinistra: la squadra, l'ultimo risultato e la prossima partita, distribuiti su tutta l'altezza
   const l = row.addStack(); l.layoutVertically(); l.size = new Size(leftW, H)
@@ -1215,7 +1220,7 @@ function venueLine(stack, d, m) {
   const vs = stack.addStack(); vs.centerAlignContent(); vs.spacing = 3; vs.url = mapsUrl(v)
   const pin = symbol("mappin.circle.fill", F_SUB)
   if (pin) { const i = vs.addImage(pin); i.imageSize = new Size(F_SUB, F_SUB); i.tintColor = C.accent }
-  const vt = txt(vs, venueShort(v), F_SUB, C.sub); vt.minimumScaleFactor = 0.8
+  const vt = txt(vs, venueShort(v), F_SUB, C.sub); vt.minimumScaleFactor = 0.75
   vs.addSpacer()
 }
 
