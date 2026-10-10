@@ -450,20 +450,17 @@ function standingsSmall(w, d) {
 }
 
 function standingsMedium(w, d) {
-  header(w, d, "Classifica")
-  w.addSpacer(7)
+  header(w, d, "Classifica", true)
+  w.addSpacer()
   const s = d.standings.slice(0, 12)
   const per = Math.ceil(s.length / 2)
   const row = w.addStack(); row.topAlignContent(); row.spacing = 12
-  const colW = (INNER - 12) / 2
-  // altezza del widget medio ≈ 0,47 × larghezza; le righe si distribuiscono su quella disponibile
-  const logoSize = per > 5 ? 14 : 16, rowH = logoSize + 1.5
-  const avail = WIDE * 0.47 - 54
-  const gap = Math.max(1, Math.min(10, (avail - per * rowH) / Math.max(1, per - 1)))
-  const nameSize = Math.min(11.5, fitNames(s, colW, 11, logoSize) + 0.5)
+  // altezza utile del medio, tolta l'intestazione: le righe si distribuiscono su quella
+  const avail = WIDE * 0.47 - 24 - 34
+  const gap = Math.max(1, Math.min(8, (avail - per * 15) / Math.max(1, per - 1)))
   for (const part of [s.slice(0, per), s.slice(per)]) {
     const c = row.addStack(); c.layoutVertically(); c.spacing = gap
-    for (const x of part) standingRowCompact(c, x, colW, 11, logoSize, nameSize)
+    for (const x of part) panoStandingRow(c, x, F_TXT)
   }
   w.addSpacer()
 }
@@ -573,14 +570,14 @@ function resultsSmall(w, d) {
 
 function resultsMedium(w, d) {
   const g = currentGiornata(d)
-  header(w, d, g.cur ? prettyGiornata(g.cur.label) : "Risultati")
-  w.addSpacer(5)
-  const list = w.addStack(); list.layoutVertically(); list.spacing = 3
+  header(w, d, g.cur ? prettyGiornata(g.cur.label) : "Risultati", true)
+  w.addSpacer()
+  const list = w.addStack(); list.layoutVertically(); list.spacing = 2
   const ms = g.cur ? g.cur.matches : []
-  list.spacing = 2
-  const shown = ms.slice(0, 5), lay = rowLayout(shown, INNER, 10)
-  shown.forEach(m => matchRow(list, m, INNER, ms.length > 5 ? 10 : 11, false, true, lay))
-  if (!ms.length) txt(list, "Nessuna partita", 11, C.sub)
+  const shown = ms.slice(0, 5), lay = rowLayout(shown, INNER, F_TXT)
+  lay.nameSize = Math.min(lay.nameSize, F_TXT)
+  shown.forEach(m => matchRow(list, m, INNER, F_TXT, false, true, lay))
+  if (!ms.length) txt(list, "Nessuna partita", F_TXT, C.sub)
   w.addSpacer()
 }
 
@@ -827,21 +824,21 @@ function miniTable(stack, d, me, width) {
   const s = d.standings, i = s.indexOf(me)
   const from = Math.max(0, Math.min(i - 1, s.length - 3))
   const rows = s.slice(from, from + 3)
-  const box = stack.addStack(); box.layoutVertically(); box.spacing = 1
+  const box = stack.addStack(); box.layoutVertically(); box.spacing = 2
   for (const x of rows) {
     const mine = x === me
-    const r = box.addStack(); r.centerAlignContent(); r.spacing = 4; r.setPadding(1, 3, 1, 3)
+    const r = box.addStack(); r.centerAlignContent(); r.spacing = 4; r.setPadding(0, 2, 0, 4)
     if (width) r.size = new Size(width, 0)
-    if (mine) { r.backgroundColor = C.hl; r.cornerRadius = 4 }
-    cell(r, x.pos, 14, Font.boldRoundedSystemFont(9), x.pos === 1 ? C.accent : C.sub, "center")
-    logo(r, x.name, 11)
-    const n = txt(r, x.name, 10, mine ? C.hlText : C.text, mine ? "bold" : "regular"); n.minimumScaleFactor = 0.8
+    if (mine) { r.backgroundColor = C.hl; r.cornerRadius = 5 }
+    cell(r, x.pos, 16, Font.semiboldRoundedSystemFont(F_SUB), x.pos === 1 ? C.accent : C.sub, "center")
+    logo(r, x.name, 13)
+    const n = txt(r, x.name, F_TXT, mine ? C.hlText : C.text, mine ? "bold" : "regular"); n.minimumScaleFactor = 0.8
     r.addSpacer()
     if (!mine) {
       const diff = x.pt - me.pt
-      txt(r, diff > 0 ? `+${diff}` : diff < 0 ? `${diff}` : "=", 9, C.sub)
+      txt(r, diff > 0 ? `+${diff}` : diff < 0 ? `${diff}` : "=", F_SUB - 1, C.sub)
     }
-    cell(r, x.pt, 18, Font.boldRoundedSystemFont(10), mine ? C.hlText : C.text, "center")
+    cell(r, x.pt, 18, ptsFont(x, F_TXT), mine ? C.hlText : C.text, "center")
   }
 }
 
@@ -898,13 +895,30 @@ function teamSmall(w, d) {
 
 function teamMedium(w, d) {
   const t = teamData(d)
-  const row = w.addStack(); row.topAlignContent(); row.spacing = 12
-  const leftW = Math.round(INNER * 0.47)
-  teamCard(row, d, t, 38, leftW)
-  const r = row.addStack(); r.layoutVertically(); r.spacing = 2
-  lastBlock(r, t, 11, d)
-  r.addSpacer(6)
-  nextBlock(r, d, t, 11)
+  const row = w.addStack(); row.topAlignContent(); row.spacing = 10
+  const leftW = Math.round((INNER - 21) / 2), rightW = INNER - 21 - leftW
+
+  // a sinistra: squadra, numeri, forma e chi le sta vicino in classifica
+  const l = row.addStack(); l.layoutVertically(); l.size = new Size(leftW, 0)
+  smallTeamTop(l, d, t)
+  l.addSpacer(6)
+  if (t.me) { txt(l, `G ${t.me.pg} · V ${t.me.v} · P ${t.me.p} · set ${t.me.sv}-${t.me.sp}`, F_SUB, C.sub); l.addSpacer(4) }
+  const fr = l.addStack(); fr.centerAlignContent(); fr.spacing = 6
+  txt(fr, "FORMA", 9, C.sub, "semibold"); dotsOnly(fr, t.form, 9)
+  if (t.me && d.standings.length > 2) { l.addSpacer(6); miniTable(l, d, t.me) }
+
+  const sep = row.addStack(); sep.size = new Size(1, 110); sep.backgroundColor = C.chip
+
+  // a destra: ultima (con i parziali) e prossima con la palestra
+  const r = row.addStack(); r.layoutVertically(); r.size = new Size(rightW, 0)
+  sectionLabel(r, "Ultima"); r.addSpacer(2)
+  if (t.last) {
+    lastRow(r, t.last, true)
+    if (t.last.parziali.length) { const p = txt(r, t.last.parziali.map(x => x.join("-")).join(" · "), F_SUB - 1, t.last.ufficioso ? C.uff : C.sub); p.minimumScaleFactor = 0.75 }
+  } else txt(r, "—", F_SUB, C.sub)
+  r.addSpacer(10)
+  if (t.next) { nextLines(r, t.next); venueLine(r, d, t.next) }
+  else { sectionLabel(r, "Prossima"); txt(r, "Nessuna in calendario", F_SUB, C.sub) }
   w.addSpacer()
 }
 
@@ -1111,61 +1125,33 @@ function panoramaMedium(w, d) {
   const row = w.addStack(); row.topAlignContent(); row.spacing = 10
   const leftW = Math.round((INNER - 21) / 2), rightW = INNER - 21 - leftW
 
+  // a sinistra: la squadra (come nel piccolo) e la prossima partita
   const l = row.addStack(); l.layoutVertically(); l.size = new Size(leftW, 0)
-  const top = l.addStack(); top.centerAlignContent(); top.spacing = 6
-  const ring = top.addStack(); ring.size = new Size(30, 30); ring.cornerRadius = 15
-  ring.borderColor = C.accent; ring.borderWidth = 2; ring.centerAlignContent()
-  logo(ring, TEAM, 24)
-  const nm = top.addStack(); nm.layoutVertically()
-  const n = txt(nm, TEAM, 12, C.text, "bold"); n.minimumScaleFactor = 0.7
-  if (t.me) {
-    const p = nm.addStack(); p.bottomAlignContent(); p.spacing = 3
-    txt(p, `${t.me.pos}°`, 15, C.hlText, "bold")
-    txt(p, `${t.me.pt} pt`, F_SUB, C.sub, "semibold")
-  }
-  top.addSpacer()
-  l.addSpacer(7)
-  if (t.last) {
-    const m = t.last
-    const lr = l.addStack(); lr.centerAlignContent(); lr.spacing = 4; lr.url = matchUrl(m)
-    lastChip(lr, m)
-    logo(lr, opp(m), 13)
-    const o = txt(lr, `${isMine(m.home) ? "vs" : "@"} ${opp(m)}`, F_SUB, C.text, "semibold"); o.minimumScaleFactor = 0.7
-    lr.addSpacer()
-    l.addSpacer(7)
-  }
-  const nx = t.next
-  const lb = txt(l, nx ? `PROSSIMA · ${countdown(nx.ts).toUpperCase()}` : "PROSSIMA", 9, C.sub, "semibold"); lb.minimumScaleFactor = 0.8
-  l.addSpacer(2)
-  if (nx) {
-    const nr = l.addStack(); nr.centerAlignContent(); nr.spacing = 4; nr.url = matchUrl(nx)
-    logo(nr, opp(nx), 13)
-    const o = txt(nr, `${isMine(nx.home) ? "vs" : "@"} ${opp(nx)}`, F_TXT, C.text, "semibold"); o.minimumScaleFactor = 0.7
-    nr.addSpacer()
-    const when = l.addStack(); when.centerAlignContent(); when.spacing = 4
-    const dt = txt(when, `${dayName(nx.ts)} ${fmtDate(nx.ts)} · ${fmtTime(nx.ts)}`, F_SUB, C.sub); dt.minimumScaleFactor = 1
-    const v = venueOf(d, nx)
-    if (v) {
-      when.url = mapsUrl(v)
-      const pin = symbol("mappin.circle.fill", F_SUB)
-      if (pin) { const i = when.addImage(pin); i.imageSize = new Size(F_SUB, F_SUB); i.tintColor = C.accent }
-    }
-    when.addSpacer()
-  } else txt(l, "Nessuna in calendario", F_SUB, C.sub)
+  smallTeamTop(l, d, t, t.last)
+  l.addSpacer(12)
+  if (t.next) { nextLines(l, t.next); venueLine(l, d, t.next) }
+  else txt(l, "Nessuna in calendario", F_SUB, C.sub)
 
-  const sep = row.addStack(); sep.size = new Size(1, 100); sep.backgroundColor = C.chip
+  const sep = row.addStack(); sep.size = new Size(1, 110); sep.backgroundColor = C.chip
 
-  const r = row.addStack(); r.layoutVertically(); r.spacing = 2; r.size = new Size(rightW, 0)
-  const hr = r.addStack(); hr.centerAlignContent()
-  sectionLabel(hr, "Classifica")
-  r.addSpacer(2)
-  // 5 righe: le prime, o quelle intorno alla tua squadra se è più in basso
+  // a destra: 5 righe di classifica, le prime o quelle intorno alla tua squadra
+  const r = row.addStack(); r.layoutVertically(); r.spacing = 5; r.size = new Size(rightW, 0)
+  sectionLabel(r, "Classifica")
   const s = d.standings, me = myStanding(d), i = me ? s.indexOf(me) : 0
   const from = Math.max(0, Math.min(i - 2, s.length - 5))
-  const rows = s.slice(from, from + 5)
-  const nameSize = Math.min(F_TXT, fitNames(rows, rightW, F_TXT, 13))
-  for (const x of rows) panoStandingRow(r, x, nameSize, rightW)
+  for (const x of s.slice(from, from + 5)) panoStandingRow(r, x, F_TXT)
   w.addSpacer()
+}
+
+// Palestra della partita (tocco: percorso con il navigatore predefinito)
+function venueLine(stack, d, m) {
+  const v = venueOf(d, m)
+  if (!v) return
+  const vs = stack.addStack(); vs.centerAlignContent(); vs.spacing = 3; vs.url = mapsUrl(v)
+  const pin = symbol("mappin.circle.fill", F_SUB)
+  if (pin) { const i = vs.addImage(pin); i.imageSize = new Size(F_SUB, F_SUB); i.tintColor = C.accent }
+  const vt = txt(vs, venueShort(v), F_SUB, C.sub); vt.minimumScaleFactor = 0.8
+  vs.addSpacer()
 }
 
 // Risultato dell'ultima partita: V/P e set, verde o rosso
