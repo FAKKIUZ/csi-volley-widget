@@ -987,87 +987,106 @@ function panoramaLarge(w, d) {
   const t = teamData(d)
   const g = currentGiornata(d)
   header(w, d, "Panoramica")
-  w.addSpacer(7)
-  let avail = WIDE * 1.05 - 24 - 22 // altezza utile del grande, tolta l'intestazione
+  let avail = WIDE * 1.05 - 24 - 30 // altezza utile del grande, tolta l'intestazione
 
+  // ── scheda squadra: a sinistra posizione e forma, a destra ultima e prossima ──
   if (TEAM && (t.me || t.last || t.next)) {
-    const box = w.addStack(); box.topAlignContent(); box.spacing = 10
-    box.setPadding(6, 8, 6, 8); box.cornerRadius = 10; box.backgroundColor = C.stripe
-    const leftW = Math.round((INNER - 16) * 0.44)
-    const l = box.addStack(); l.layoutVertically(); l.spacing = 3; l.size = new Size(leftW, 0)
-    const top = l.addStack(); top.centerAlignContent(); top.spacing = 6
-    const ring = top.addStack(); ring.size = new Size(32, 32); ring.cornerRadius = 16
+    w.addSpacer()
+    const box = w.addStack(); box.centerAlignContent(); box.spacing = 10
+    box.size = new Size(INNER, 0)
+    box.setPadding(8, 10, 8, 10); box.cornerRadius = 12; box.backgroundColor = C.stripe
+    const leftW = Math.round((INNER - 20) * 0.4)
+    const l = box.addStack(); l.layoutVertically(); l.spacing = 5; l.size = new Size(leftW, 0)
+    const top = l.addStack(); top.centerAlignContent(); top.spacing = 7
+    const ring = top.addStack(); ring.size = new Size(36, 36); ring.cornerRadius = 18
     ring.borderColor = C.accent; ring.borderWidth = 2; ring.centerAlignContent()
-    logo(ring, TEAM, 26)
-    const nm = top.addStack(); nm.layoutVertically()
-    const n = txt(nm, TEAM, 12, C.text, "bold"); n.minimumScaleFactor = 0.7
+    logo(ring, TEAM, 29)
+    const nm = top.addStack(); nm.layoutVertically(); nm.spacing = 0
+    const n = txt(nm, TEAM, 12.5, C.text, "bold"); n.minimumScaleFactor = 0.7
     if (t.me) {
-      const p = nm.addStack(); p.bottomAlignContent(); p.spacing = 3
-      txt(p, `${t.me.pos}°`, 15, C.hlText, "bold")
-      txt(p, `${t.me.pt} pt`, 10, C.text, "semibold")
+      const p = nm.addStack(); p.bottomAlignContent(); p.spacing = 4
+      txt(p, `${t.me.pos}°`, 17, C.hlText, "bold")
+      txt(p, `${t.me.pt} pt`, 11, C.text, "semibold")
     }
-    formDots(l, t.form, 9)
+    top.addSpacer()
+    dotsOnly(l, t.form, 10)
+
+    const sep = box.addStack(); sep.size = new Size(1, 54); sep.backgroundColor = C.chip
+
     const r = box.addStack(); r.layoutVertically(); r.spacing = 2
     const m = t.last
+    sectionLabel(r, "Ultima")
     if (m) {
-      const lr = r.addStack(); lr.centerAlignContent(); lr.spacing = 4; lr.url = matchUrl(m)
+      const lr = r.addStack(); lr.centerAlignContent(); lr.spacing = 5; lr.url = matchUrl(m)
       const wn = won(m)
-      const chip = lr.addStack(); chip.setPadding(1, 4, 1, 4); chip.cornerRadius = 4; chip.backgroundColor = wn ? C.win : C.lose
-      const ct = chip.addText(`${wn ? "V" : "P"} ${homeAway(m)}`); ct.font = Font.boldRoundedSystemFont(10); ct.textColor = Color.white()
-      logo(lr, opp(m), 13)
-      const o = txt(lr, `${isMine(m.home) ? "vs" : "@"} ${opp(m)}`, 10, C.text); o.minimumScaleFactor = 0.75
-    }
+      const chip = lr.addStack(); chip.setPadding(1, 5, 1, 5); chip.cornerRadius = 5; chip.backgroundColor = wn ? C.win : C.lose
+      const ct = chip.addText(`${wn ? "V" : "P"} ${homeAway(m)}`); ct.font = Font.boldRoundedSystemFont(10.5); ct.textColor = Color.white()
+      logo(lr, opp(m), 14)
+      const o = txt(lr, `${isMine(m.home) ? "vs" : "@"} ${opp(m)}`, 10.5, C.text); o.minimumScaleFactor = 0.75
+    } else txt(r, "—", 10.5, C.sub)
+    r.addSpacer(5)
     const nx = t.next
+    sectionLabel(r, nx ? `Prossima · ${countdown(nx.ts)}` : "Prossima")
     if (nx) {
-      if (m) r.addSpacer(3)
-      sectionLabel(r, `Prossima · ${countdown(nx.ts)}`)
-      const nr = r.addStack(); nr.centerAlignContent(); nr.spacing = 4
-      logo(nr, opp(nx), 13)
+      const nr = r.addStack(); nr.centerAlignContent(); nr.spacing = 5; nr.url = matchUrl(nx)
+      logo(nr, opp(nx), 14)
       const o = txt(nr, `${isMine(nx.home) ? "vs" : "@"} ${opp(nx)}`, 10.5, C.text, "semibold"); o.minimumScaleFactor = 0.75
-      const v = venueOf(d, nx)
-      const when = r.addStack(); when.centerAlignContent(); when.spacing = 3
+      const when = r.addStack(); when.centerAlignContent(); when.spacing = 4
       txt(when, `${dayName(nx.ts)} ${fmtDate(nx.ts)} · ${fmtTime(nx.ts)}`, 9.5, C.sub)
+      const v = venueOf(d, nx)
       if (v) {
-        when.url = mapsUrl(v)
+        const vs = when.addStack(); vs.centerAlignContent(); vs.spacing = 2; vs.url = mapsUrl(v)
         const pin = symbol("mappin.circle.fill", 9)
-        if (pin) { const i = when.addImage(pin); i.imageSize = new Size(10, 10); i.tintColor = C.accent }
-        const vt = txt(when, venueCity(v) || venueName(v), 9.5, C.sub); vt.minimumScaleFactor = 0.7
+        if (pin) { const i = vs.addImage(pin); i.imageSize = new Size(10, 10); i.tintColor = C.accent }
+        const vt = txt(vs, venueCity(v) || venueName(v), 9.5, C.sub); vt.minimumScaleFactor = 0.7
       }
-    } else if (!m) txt(r, "Nessuna partita in calendario", 10, C.sub)
-    w.addSpacer(8)
-    avail -= 70
+    } else txt(r, "Nessuna in calendario", 10.5, C.sub)
+    avail -= 86
   }
 
-  // classifica in due colonne: se ne calcola l'altezza per lasciare il resto alla giornata
+  // ── classifica in due colonne: se ne calcola l'altezza per lasciare il resto alla giornata ──
   const st = d.standings.slice(0, 14)
   const per = Math.ceil(st.length / 2)
-  const rowH = 15.5
-  const standH = 14 + per * rowH + (per - 1) * 2
+  const standH = 16 + per * 16 + (per - 1) * 2
 
   if (g.cur) {
+    w.addSpacer()
     sectionLabel(w, prettyGiornata(g.cur.label))
-    w.addSpacer(3)
-    const free = avail - standH - 10 - 17
-    const fit = Math.max(2, Math.floor((free + 2) / 18))
+    w.addSpacer(4)
+    const free = avail - standH - 16
+    const fit = Math.max(2, Math.floor((free + 3) / 21))
     const ms = g.cur.matches.slice(0, fit)
-    const list = w.addStack(); list.layoutVertically(); list.spacing = 2
-    const lay = rowLayout(ms, INNER, 10)
-    ms.forEach(m => matchRow(list, m, INNER, 10, false, true, lay))
-    w.addSpacer(8)
+    const list = w.addStack(); list.layoutVertically(); list.spacing = 3
+    const lay = rowLayout(ms, INNER, 10.5)
+    ms.forEach(m => matchRow(list, m, INNER, 10.5, false, true, lay))
   }
 
   if (st.length) {
+    w.addSpacer()
     sectionLabel(w, "Classifica")
-    w.addSpacer(3)
-    const row = w.addStack(); row.topAlignContent(); row.spacing = 10
-    const colW = (INNER - 10) / 2
-    const nameSize = Math.min(10.5, fitNames(st, colW, 10, 13) + 0.5)
+    w.addSpacer(4)
+    const row = w.addStack(); row.topAlignContent(); row.spacing = 12
+    const colW = (INNER - 12) / 2
+    const nameSize = Math.min(10.5, fitNames(st, colW, 10.5, 14) + 0.5)
     for (const part of [st.slice(0, per), st.slice(per)]) {
       const c = row.addStack(); c.layoutVertically(); c.spacing = 2
-      for (const x of part) standingRowCompact(c, x, colW, 10, 13, nameSize)
+      for (const x of part) standingRowCompact(c, x, colW, 10.5, 14, nameSize)
     }
   }
   w.addSpacer()
+}
+
+// Solo i pallini della forma (ultime 5: V verde, P rossa, vuoti da giocare), senza etichetta
+function dotsOnly(stack, form, size) {
+  const r = stack.addStack(); r.centerAlignContent(); r.spacing = 4
+  for (let i = 0; i < 5; i++) {
+    const f = form[i]
+    const dot = r.addStack(); dot.size = new Size(size + 4, size + 4); dot.cornerRadius = (size + 4) / 2; dot.centerAlignContent()
+    if (f === undefined) { dot.borderColor = C.chip; dot.borderWidth = 1.5; continue }
+    dot.backgroundColor = f ? C.win : C.lose
+    const tt = dot.addText(f ? "V" : "P"); tt.font = Font.boldRoundedSystemFont(size - 2); tt.textColor = Color.white()
+  }
+  return r
 }
 
 // ───────────────────────── widget a tutta pagina ─────────────────────────
