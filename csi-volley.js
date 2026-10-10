@@ -445,7 +445,8 @@ function standingsSmall(w, d) {
   const avail = WIDE * 0.467 - 58 // altezza utile del piccolo (quadrato)
   const col = w.addStack(); col.layoutVertically()
   col.spacing = Math.max(2, Math.min(10, (avail - rows.length * 16) / Math.max(1, rows.length - 1)))
-  for (const s of rows) panoStandingRow(col, s, F_TXT)
+  const ns = rowNameSize(rows, INNER_SMALL)
+  for (const s of rows) panoStandingRow(col, s, ns)
   w.addSpacer()
 }
 
@@ -458,9 +459,10 @@ function standingsMedium(w, d) {
   // altezza utile del medio, tolta l'intestazione: le righe si distribuiscono su quella
   const avail = WIDE * 0.47 - 24 - 34
   const gap = Math.max(1, Math.min(8, (avail - per * 15) / Math.max(1, per - 1)))
+  const ns = rowNameSize(s, (INNER - 12) / 2)
   for (const part of [s.slice(0, per), s.slice(per)]) {
     const c = row.addStack(); c.layoutVertically(); c.spacing = gap
-    for (const x of part) panoStandingRow(c, x, F_TXT)
+    for (const x of part) panoStandingRow(c, x, ns)
   }
   w.addSpacer()
 }
@@ -1077,7 +1079,8 @@ function panoramaSmall(w, d) {
     const from = Math.max(0, Math.min(i - 1, s.length - 3))
     const rows = s.slice(from, from + 3)
     const col = w.addStack(); col.layoutVertically(); col.spacing = 2
-    for (const x of rows) panoStandingRow(col, x, F_TXT)
+    const ns = rowNameSize(rows, INNER_SMALL)
+    for (const x of rows) panoStandingRow(col, x, ns)
     w.addSpacer()
   } else if (t.last) { lastRow(w, t.last, false); w.addSpacer() }
   if (t.next) nextLines(w, t.next)
@@ -1089,7 +1092,7 @@ function smallTeamTop(w, d, t, chipMatch) {
   const top = w.addStack(); top.centerAlignContent(); top.spacing = 7
   logo(top, TEAM, 26)
   const nm = top.addStack(); nm.layoutVertically()
-  txt(nm, TEAM, 12, C.text, "bold")
+  const n = txt(nm, TEAM, 12, C.text, "bold"); n.minimumScaleFactor = 0.85
   const p = nm.addStack(); p.centerAlignContent(); p.spacing = 3
   if (t.me) {
     txt(p, `${t.me.pos}°`, F_SUB, C.hlText, "bold")
@@ -1139,7 +1142,8 @@ function panoramaMedium(w, d) {
   sectionLabel(r, "Classifica")
   const s = d.standings, me = myStanding(d), i = me ? s.indexOf(me) : 0
   const from = Math.max(0, Math.min(i - 2, s.length - 5))
-  for (const x of s.slice(from, from + 5)) panoStandingRow(r, x, F_TXT)
+  const rows5 = s.slice(from, from + 5), ns = rowNameSize(rows5, rightW)
+  for (const x of rows5) panoStandingRow(r, x, ns)
   w.addSpacer()
 }
 
@@ -1162,6 +1166,13 @@ function lastChip(stack, m) {
   return chip
 }
 
+// Grandezza dei nomi in una lista di classifica: 10,5 se ci stanno, altrimenti un po' meno,
+// uguale per tutte le righe del widget (posizione, logo, punti e spazi ≈ 72 pt)
+function rowNameSize(rows, width) {
+  const longest = Math.max(1, ...rows.map(r => r.name.length))
+  return Math.max(9, Math.min(F_TXT, Math.floor((width - 72) / (longest * 0.58) * 2) / 2))
+}
+
 // Riga di classifica della panoramica: posizione, logo, nome e punti con la stessa scala di caratteri
 function panoStandingRow(stack, s, nameSize, width) {
   const r = stack.addStack(); r.centerAlignContent(); r.spacing = 4; r.setPadding(0, 2, 0, 4)
@@ -1171,7 +1182,7 @@ function panoStandingRow(stack, s, nameSize, width) {
   cell(r, s.pos, 16, Font.semiboldRoundedSystemFont(F_SUB), s.pos === 1 ? C.accent : C.sub, "center", true)
   if (TREND) trend(r, s, F_SUB)
   logo(r, s.name, 13)
-  txt(r, s.name, nameSize, mine ? C.hlText : C.text, mine ? "bold" : "regular")
+  const n = txt(r, s.name, nameSize, mine ? C.hlText : C.text, mine ? "bold" : "regular"); n.minimumScaleFactor = 0.9
   r.addSpacer()
   cell(r, s.pt, 18, ptsFont(s, F_TXT), ptsColor(s), "center")
 }
@@ -1445,9 +1456,9 @@ function header(w, d, subtitle, compact) {
   if (img) { const i = ic.addImage(img); i.imageSize = new Size(15, 15); i.tintColor = Color.white() }
   const tt = h.addStack(); tt.layoutVertically()
   if (compact) {
-    // dimensioni fisse: iOS non deve rimpicciolirle, altrimenti cambiano da un widget all'altro
-    txt(tt, d.title, 12, C.text, "bold")
-    txt(tt, subtitle, F_SUB, C.sub, "semibold")
+    // in grande cosa mostra il widget, sotto il girone (dimensioni fisse, uguali in tutti i widget)
+    txt(tt, subtitle, 12, C.text, "bold")
+    const g = txt(tt, d.title, F_SUB, C.sub, "semibold"); g.lineLimit = 1
     h.addSpacer()
     return
   }
