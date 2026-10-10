@@ -442,11 +442,11 @@ function standingsSmall(w, d) {
   header(w, d, "Classifica", true)
   w.addSpacer(6)
   const rows = pickStandings(d, 5)
-  const avail = WIDE * 0.467 - 58 - 13 // altezza utile del piccolo (quadrato), tolto il piè di pagina
+  const avail = WIDE * 0.467 - 58 // altezza utile del piccolo (quadrato)
   const col = w.addStack(); col.layoutVertically()
   col.spacing = Math.max(2, Math.min(10, (avail - rows.length * 16) / Math.max(1, rows.length - 1)))
   const ns = Math.min(F_TXT, fitNames(rows, INNER_SMALL, F_TXT, 13))
-  for (const s of rows) panoStandingRow(col, s, ns)
+  for (const s of rows) panoStandingRow(col, s, ns, INNER_SMALL)
   w.addSpacer()
 }
 
@@ -459,7 +459,7 @@ function standingsMedium(w, d) {
   const colW = (INNER - 12) / 2
   // altezza del widget medio ≈ 0,47 × larghezza; le righe si distribuiscono su quella disponibile
   const logoSize = per > 5 ? 14 : 16, rowH = logoSize + 1.5
-  const avail = WIDE * 0.47 - 54 - 13
+  const avail = WIDE * 0.47 - 54
   const gap = Math.max(1, Math.min(10, (avail - per * rowH) / Math.max(1, per - 1)))
   const nameSize = Math.min(11.5, fitNames(s, colW, 11, logoSize) + 0.5)
   for (const part of [s.slice(0, per), s.slice(per)]) {
@@ -589,7 +589,7 @@ function resultsLarge(w, d) {
   const g = currentGiornata(d)
   header(w, d, "Risultati")
   w.addSpacer(8)
-  let budget = WIDE * 1.05 - 38 - 13
+  let budget = WIDE * 1.05 - 38
   if (g.cur) {
     sectionLabel(w, prettyGiornata(g.cur.label))
     w.addSpacer(3)
@@ -925,7 +925,7 @@ function teamLarge(w, d) {
   w.addSpacer(3)
   const list = w.addStack(); list.layoutVertically(); list.spacing = 2
   // altezza del grande ≈ 1,05 × larghezza: le righe del calendario sono quante ne entrano
-  const n = Math.max(3, Math.min(8, Math.floor((WIDE * 1.05 - 222 - 13) / 24)))
+  const n = Math.max(3, Math.min(8, Math.floor((WIDE * 1.05 - 222) / 24)))
   const past = Math.min(t.pl.length, t.up.length ? 2 : n)
   const cal = t.pl.slice(0, past).reverse().concat(t.up).slice(0, n)
   cal.forEach((m, i) => calendarRow(list, m, i % 2 === 0, t.next && m.code === t.next.code))
@@ -964,7 +964,7 @@ function panoramaLarge(w, d) {
   const t = teamData(d)
   const g = currentGiornata(d)
   header(w, d, "Panoramica")
-  let avail = WIDE * 1.05 - 24 - 30 - 13 // altezza utile del grande, tolte intestazione e piè di pagina
+  let avail = WIDE * 1.05 - 24 - 30 // altezza utile del grande, tolta l'intestazione
 
   // ── scheda squadra: a sinistra posizione e forma, a destra ultima e prossima ──
   if (TEAM && (t.me || t.last || t.next)) {
@@ -1048,7 +1048,7 @@ function panoramaLarge(w, d) {
     const nameSize = Math.min(F_TXT, fitNames(st, colW, F_TXT, 13))
     for (const part of [st.slice(0, per), st.slice(per)]) {
       const c = row.addStack(); c.layoutVertically(); c.spacing = 2
-      for (const x of part) panoStandingRow(c, x, nameSize)
+      for (const x of part) panoStandingRow(c, x, nameSize, colW)
     }
   }
   w.addSpacer()
@@ -1057,7 +1057,8 @@ function panoramaLarge(w, d) {
 // ── panoramica piccola: la squadra, chi le sta sopra e sotto in classifica, la prossima partita ──
 function panoramaSmall(w, d) {
   const t = teamData(d)
-  smallTeamTop(w, d, t)
+  const top = smallTeamTop(w, d, t)
+  if (t.last) lastChip(top, t.last)
   w.addSpacer()
   if (t.me && d.standings.length > 2) {
     const s = d.standings, i = s.indexOf(t.me)
@@ -1065,7 +1066,7 @@ function panoramaSmall(w, d) {
     const rows = s.slice(from, from + 3)
     const ns = Math.min(F_TXT, fitNames(rows, INNER_SMALL, F_TXT, 13))
     const col = w.addStack(); col.layoutVertically(); col.spacing = 2
-    for (const x of rows) panoStandingRow(col, x, ns)
+    for (const x of rows) panoStandingRow(col, x, ns, INNER_SMALL)
     w.addSpacer()
   } else if (t.last) { lastRow(w, t.last, false); w.addSpacer() }
   if (t.next) nextLines(w, t.next)
@@ -1084,6 +1085,7 @@ function smallTeamTop(w, d, t) {
     txt(p, `· ${t.me.pt} pt`, F_SUB, C.sub, "semibold")
   }
   top.addSpacer()
+  return top
 }
 
 // Ultimo risultato su una riga: V/P con i set, logo e avversario
@@ -1164,7 +1166,7 @@ function panoramaMedium(w, d) {
   const from = Math.max(0, Math.min(i - 2, s.length - 5))
   const rows = s.slice(from, from + 5)
   const nameSize = Math.min(F_TXT, fitNames(rows, rightW, F_TXT, 13))
-  for (const x of rows) panoStandingRow(r, x, nameSize)
+  for (const x of rows) panoStandingRow(r, x, nameSize, rightW)
   w.addSpacer()
 }
 
@@ -1177,8 +1179,9 @@ function lastChip(stack, m) {
 }
 
 // Riga di classifica della panoramica: posizione, logo, nome e punti con la stessa scala di caratteri
-function panoStandingRow(stack, s, nameSize) {
+function panoStandingRow(stack, s, nameSize, width) {
   const r = stack.addStack(); r.centerAlignContent(); r.spacing = 4; r.setPadding(0, 2, 0, 4)
+  if (width) r.size = new Size(width, 0)
   const mine = isMine(s.name)
   if (mine) { r.backgroundColor = C.hl; r.cornerRadius = 5 }
   cell(r, s.pos, 16, Font.semiboldRoundedSystemFont(F_SUB), s.pos === 1 ? C.accent : C.sub, "center", true)
