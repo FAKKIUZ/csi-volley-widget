@@ -560,12 +560,13 @@ function resultsSmall(w, d) {
     sub = g.cur ? prettyGiornata(g.cur.label, true) : "Risultati"
   }
   header(w, d, sub, true)
-  w.addSpacer(6)
+  w.addSpacer()
   const longest = Math.max(1, ...list.flatMap(m => [m.home.length, m.away.length]))
   const ns = Math.max(8.5, Math.min(F_TXT, Math.floor((INNER_SMALL - 52) / (longest * 0.55) * 2) / 2))
   list.forEach((m, i) => {
-    if (i) w.addSpacer(6)
-    scoreboard(w, m, F_TXT, ns)
+    if (i) w.addSpacer()
+    if (m.sets || !TEAM) scoreboard(w, m, F_TXT, ns)
+    else nextLines(w, m)
   })
   if (!list.length) txt(w, "Nessuna partita", F_TXT, C.sub)
   w.addSpacer()
@@ -1076,12 +1077,13 @@ function smallTeamTop(w, d, t) {
   const top = w.addStack(); top.centerAlignContent(); top.spacing = 7
   logo(top, TEAM, 26)
   const nm = top.addStack(); nm.layoutVertically()
-  const n = txt(nm, TEAM, 12, C.text, "bold"); n.minimumScaleFactor = 0.7
+  const n = txt(nm, TEAM, 12, C.text, "bold"); n.minimumScaleFactor = 0.85
   const p = nm.addStack(); p.centerAlignContent(); p.spacing = 3
   if (t.me) {
     txt(p, `${t.me.pos}°`, F_SUB, C.hlText, "bold")
     txt(p, `· ${t.me.pt} pt`, F_SUB, C.sub, "semibold")
   }
+  top.addSpacer()
 }
 
 // Ultimo risultato su una riga: V/P con i set, logo e avversario
@@ -1456,10 +1458,9 @@ function header(w, d, subtitle, compact) {
   if (img) { const i = ic.addImage(img); i.imageSize = new Size(15, 15); i.tintColor = Color.white() }
   const tt = h.addStack(); tt.layoutVertically()
   if (compact) {
-    // nei piccoli il titolo ha tutta la riga; l'orario va a destra del sottotitolo
-    const t = txt(tt, d.title, 12, C.text, "bold"); t.minimumScaleFactor = 0.75
-    const sr = tt.addStack(); sr.centerAlignContent()
-    const s = txt(sr, subtitle, F_SUB, C.sub, "semibold"); s.minimumScaleFactor = 0.7
+    const t = txt(tt, d.title, 12, C.text, "bold"); t.minimumScaleFactor = 0.85
+    const s = txt(tt, subtitle, F_SUB, C.sub, "semibold"); s.minimumScaleFactor = 0.85
+    h.addSpacer()
     return
   }
   const t = txt(tt, d.title, 13, C.text, "bold"); t.minimumScaleFactor = 0.6
@@ -1472,7 +1473,7 @@ function header(w, d, subtitle, compact) {
 function footer(w, d) {
   const when = isToday(d.fetched) ? fmtTime(d.fetched) : `${fmtDate(d.fetched)} ${fmtTime(d.fetched)}`
   const f = w.addStack(); f.addSpacer()
-  txt(f, d.fromCache ? `⚠︎ Dati delle ${when}` : `Aggiornato alle ${when}`, 8.5, d.fromCache ? C.lose : C.sub)
+  txt(f, d.fromCache ? `⚠︎ ${when}` : when, 9, d.fromCache ? C.lose : C.sub)
   f.addSpacer()
 }
 
