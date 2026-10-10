@@ -421,16 +421,18 @@ async function buildWidget(d, family, view) {
     squadra: [teamSmall, teamMedium, teamLarge],
   }[view] || [standingsSmall, standingsMedium, standingsLarge]
   // formati oltre il grande (extra large su iPad, verticale alto di iOS 27…): panoramica
-  if (!["small", "medium", "large"].includes(family)) { dashboard(w, d); return w }
+  if (!["small", "medium", "large"].includes(family)) { dashboard(w, d); footer(w, d); return w }
   if (view === "panoramica") {
     // senza squadra la panoramica piccola e media ripiegano sulla classifica
     const noTeam = !TEAM || (!myStanding(d) && !d.matches.some(isMyMatch))
     const fs = noTeam ? [standingsSmall, standingsMedium, panoramaLarge] : [panoramaSmall, panoramaMedium, panoramaLarge]
     fs[family === "small" ? 0 : family === "medium" ? 1 : 2](w, d)
+    footer(w, d)
     return w
   }
   if (view === "squadra" && !myStanding(d) && !d.matches.some(isMyMatch)) return noTeamWidget(w)
   layouts[family === "small" ? 0 : family === "medium" ? 1 : 2](w, d)
+  footer(w, d)
   return w
 }
 
@@ -440,10 +442,11 @@ function standingsSmall(w, d) {
   header(w, d, "Classifica", true)
   w.addSpacer(6)
   const rows = pickStandings(d, 5)
-  const avail = WIDE * 0.467 - 58 // altezza utile del piccolo (quadrato)
+  const avail = WIDE * 0.467 - 58 - 13 // altezza utile del piccolo (quadrato), tolto il piè di pagina
   const col = w.addStack(); col.layoutVertically()
   col.spacing = Math.max(2, Math.min(10, (avail - rows.length * 16) / Math.max(1, rows.length - 1)))
-  for (const s of rows) standingRowCompact(col, s, INNER_SMALL, 11, 15, fitNames(rows, INNER_SMALL, 11, 15))
+  const ns = Math.min(F_TXT, fitNames(rows, INNER_SMALL, F_TXT, 13))
+  for (const s of rows) panoStandingRow(col, s, ns)
   w.addSpacer()
 }
 
@@ -456,7 +459,7 @@ function standingsMedium(w, d) {
   const colW = (INNER - 12) / 2
   // altezza del widget medio ≈ 0,47 × larghezza; le righe si distribuiscono su quella disponibile
   const logoSize = per > 5 ? 14 : 16, rowH = logoSize + 1.5
-  const avail = WIDE * 0.47 - 54
+  const avail = WIDE * 0.47 - 54 - 13
   const gap = Math.max(1, Math.min(10, (avail - per * rowH) / Math.max(1, per - 1)))
   const nameSize = Math.min(11.5, fitNames(s, colW, 11, logoSize) + 0.5)
   for (const part of [s.slice(0, per), s.slice(per)]) {
@@ -559,12 +562,12 @@ function resultsSmall(w, d) {
   header(w, d, sub, true)
   w.addSpacer(6)
   const longest = Math.max(1, ...list.flatMap(m => [m.home.length, m.away.length]))
-  const ns = Math.max(8.5, Math.min(11, Math.floor((INNER_SMALL - 52) / (longest * 0.55) * 2) / 2))
+  const ns = Math.max(8.5, Math.min(F_TXT, Math.floor((INNER_SMALL - 52) / (longest * 0.55) * 2) / 2))
   list.forEach((m, i) => {
     if (i) w.addSpacer(6)
-    scoreboard(w, m, 11, ns)
+    scoreboard(w, m, F_TXT, ns)
   })
-  if (!list.length) txt(w, "Nessuna partita", 11, C.sub)
+  if (!list.length) txt(w, "Nessuna partita", F_TXT, C.sub)
   w.addSpacer()
 }
 
@@ -575,7 +578,7 @@ function resultsMedium(w, d) {
   const list = w.addStack(); list.layoutVertically(); list.spacing = 3
   const ms = g.cur ? g.cur.matches : []
   list.spacing = 2
-  const shown = ms.slice(0, 6), lay = rowLayout(shown, INNER, ms.length > 5 ? 10 : 11)
+  const shown = ms.slice(0, 5), lay = rowLayout(shown, INNER, 10)
   shown.forEach(m => matchRow(list, m, INNER, ms.length > 5 ? 10 : 11, false, true, lay))
   if (!ms.length) txt(list, "Nessuna partita", 11, C.sub)
   w.addSpacer()
@@ -585,7 +588,7 @@ function resultsLarge(w, d) {
   const g = currentGiornata(d)
   header(w, d, "Risultati")
   w.addSpacer(8)
-  let budget = WIDE * 1.05 - 38
+  let budget = WIDE * 1.05 - 38 - 13
   if (g.cur) {
     sectionLabel(w, prettyGiornata(g.cur.label))
     w.addSpacer(3)
@@ -668,12 +671,9 @@ function scoreboard(stack, m, size, nameSize) {
     t.minimumScaleFactor = 0.9
     r.addSpacer()
     if (m.sets) txt(r, m.sets[side], size + 1, m.ufficioso ? C.uff : won ? C.text : C.sub, won ? "bold" : "regular")
+    // partita da giocare: giorno sulla prima riga, ora sulla seconda
+    else txt(r, side ? fmtTime(m.ts) : isToday(m.ts) ? "oggi" : `${dayName(m.ts)} ${fmtDate(m.ts)}`, F_SUB, C.sub, "semibold")
   })
-  if (!m.sets) {
-    const when = box.addStack(); when.addSpacer()
-    txt(when, `${isToday(m.ts) ? "oggi" : `${dayName(m.ts)} ${fmtDate(m.ts)}`} · ${fmtTime(m.ts)}`, size - 2, C.sub, "semibold")
-    when.addSpacer()
-  }
 }
 
 // ── lock screen ──
@@ -847,13 +847,7 @@ function miniTable(stack, d, me, width) {
 
 function lastBlock(stack, t, size, d) {
   const m = t.last
-  if (d) {
-    // nel medio non c'è l'intestazione: l'orario dell'aggiornamento va sulla riga "Ultima"
-    const h = stack.addStack(); h.centerAlignContent()
-    sectionLabel(h, "Ultima")
-    h.addSpacer()
-    updatedLabel(h, d)
-  } else sectionLabel(stack, "Ultima")
+  sectionLabel(stack, "Ultima")
   if (!m) { txt(stack, "—", size, C.sub); return }
   const r = stack.addStack(); r.centerAlignContent(); r.spacing = 5; r.url = matchUrl(m)
   const w = won(m)
@@ -886,42 +880,20 @@ function nextBlock(stack, d, t, size) {
 
 function teamSmall(w, d) {
   const t = teamData(d)
-  const top = w.addStack(); top.centerAlignContent(); top.spacing = 7
-  logo(top, TEAM, 32)
-  const nm = top.addStack(); nm.layoutVertically()
-  const n = txt(nm, TEAM, 12, C.text, "bold"); n.minimumScaleFactor = 0.7
-  if (t.me) {
-    const p = nm.addStack(); p.bottomAlignContent(); p.spacing = 3
-    txt(p, `${t.me.pos}°`, 15, C.hlText, "bold")
-    txt(p, `${t.me.pt} pt`, 10, C.sub, "semibold")
-  }
-  top.addSpacer()
-  const tm = top.addStack(); tm.layoutVertically(); updatedLabel(tm, d); tm.addSpacer()
-  w.addSpacer(6)
-  formDots(w, t.form, 10)
+  smallTeamTop(w, d, t)
+  w.addSpacer()
+  const fr = w.addStack(); fr.centerAlignContent(); fr.spacing = 6
+  txt(fr, "FORMA", 9, C.sub, "semibold")
+  dotsOnly(fr, t.form, 9)
   w.addSpacer()
   if (t.last && t.next) {
-    const l = t.last
     sectionLabel(w, "Ultima")
     w.addSpacer(2)
-    const r = w.addStack(); r.centerAlignContent(); r.spacing = 4
-    const chip = r.addStack(); chip.setPadding(1, 4, 1, 4); chip.cornerRadius = 4; chip.backgroundColor = won(l) ? C.win : C.lose
-    const ct = chip.addText(`${won(l) ? "V" : "P"} ${homeAway(l)}`); ct.font = Font.boldRoundedSystemFont(10); ct.textColor = Color.white()
-    const o = txt(r, `${isMine(l.home) ? "vs" : "@"} ${opp(l)}`, 10, C.text); o.minimumScaleFactor = 0.75
+    lastRow(w, t.last, false)
     w.addSpacer()
   }
-  const m = t.next
-  if (m) {
-    sectionLabel(w, `Prossima · ${countdown(m.ts)}`)
-    w.addSpacer(2)
-    const r = w.addStack(); r.centerAlignContent(); r.spacing = 4
-    logo(r, opp(m), 14)
-    const o = txt(r, `${isMine(m.home) ? "vs" : "@"} ${opp(m)}`, 11, C.text, "semibold"); o.minimumScaleFactor = 0.75
-    txt(w, `${dayName(m.ts)} ${fmtDate(m.ts)} · ${fmtTime(m.ts)}`, 10, C.sub)
-  } else if (t.last) {
-    sectionLabel(w, "Ultima")
-    txt(w, `${won(t.last) ? "V" : "P"} ${homeAway(t.last)} ${isMine(t.last.home) ? "vs" : "@"} ${opp(t.last)}`, 11, C.text)
-  }
+  if (t.next) nextLines(w, t.next)
+  else if (t.last) { sectionLabel(w, "Ultima"); w.addSpacer(2); lastRow(w, t.last, false) }
 }
 
 function teamMedium(w, d) {
@@ -952,7 +924,7 @@ function teamLarge(w, d) {
   w.addSpacer(3)
   const list = w.addStack(); list.layoutVertically(); list.spacing = 2
   // altezza del grande ≈ 1,05 × larghezza: le righe del calendario sono quante ne entrano
-  const n = Math.max(3, Math.min(8, Math.floor((WIDE * 1.05 - 222) / 24)))
+  const n = Math.max(3, Math.min(8, Math.floor((WIDE * 1.05 - 222 - 13) / 24)))
   const past = Math.min(t.pl.length, t.up.length ? 2 : n)
   const cal = t.pl.slice(0, past).reverse().concat(t.up).slice(0, n)
   cal.forEach((m, i) => calendarRow(list, m, i % 2 === 0, t.next && m.code === t.next.code))
@@ -991,7 +963,7 @@ function panoramaLarge(w, d) {
   const t = teamData(d)
   const g = currentGiornata(d)
   header(w, d, "Panoramica")
-  let avail = WIDE * 1.05 - 24 - 30 // altezza utile del grande, tolta l'intestazione
+  let avail = WIDE * 1.05 - 24 - 30 - 13 // altezza utile del grande, tolte intestazione e piè di pagina
 
   // ── scheda squadra: a sinistra posizione e forma, a destra ultima e prossima ──
   if (TEAM && (t.me || t.last || t.next)) {
@@ -1081,37 +1053,54 @@ function panoramaLarge(w, d) {
   w.addSpacer()
 }
 
-// ── panoramica piccola: posizione, ultimo risultato e prossima partita ──
+// ── panoramica piccola: la squadra, chi le sta sopra e sotto in classifica, la prossima partita ──
 function panoramaSmall(w, d) {
   const t = teamData(d)
-  const top = w.addStack(); top.centerAlignContent(); top.spacing = 6
-  logo(top, TEAM, 28)
+  smallTeamTop(w, d, t)
+  w.addSpacer()
+  if (t.me && d.standings.length > 2) {
+    const s = d.standings, i = s.indexOf(t.me)
+    const from = Math.max(0, Math.min(i - 1, s.length - 3))
+    const rows = s.slice(from, from + 3)
+    const ns = Math.min(F_TXT, fitNames(rows, INNER_SMALL, F_TXT, 13))
+    const col = w.addStack(); col.layoutVertically(); col.spacing = 2
+    for (const x of rows) panoStandingRow(col, x, ns)
+    w.addSpacer()
+  } else if (t.last) { lastRow(w, t.last, false); w.addSpacer() }
+  if (t.next) nextLines(w, t.next)
+  else txt(w, "Nessuna in calendario", F_SUB, C.sub)
+}
+
+// Intestazione dei piccoli di squadra: logo, nome, posizione e punti, orario a destra
+function smallTeamTop(w, d, t) {
+  const top = w.addStack(); top.centerAlignContent(); top.spacing = 7
+  logo(top, TEAM, 26)
   const nm = top.addStack(); nm.layoutVertically()
   const n = txt(nm, TEAM, 12, C.text, "bold"); n.minimumScaleFactor = 0.7
+  const p = nm.addStack(); p.centerAlignContent(); p.spacing = 3
   if (t.me) {
-    const p = nm.addStack(); p.bottomAlignContent(); p.spacing = 3
-    txt(p, `${t.me.pos}°`, 15, C.hlText, "bold")
-    txt(p, `${t.me.pt} pt`, F_SUB, C.sub, "semibold")
+    txt(p, `${t.me.pos}°`, F_SUB, C.hlText, "bold")
+    txt(p, `· ${t.me.pt} pt`, F_SUB, C.sub, "semibold")
   }
-  top.addSpacer()
-  const tm = top.addStack(); tm.layoutVertically(); updatedLabel(tm, d); tm.addSpacer()
-  w.addSpacer()
-  if (t.last) {
-    const m = t.last
-    const lr = w.addStack(); lr.centerAlignContent(); lr.spacing = 4
-    lastChip(lr, m)
-    const o = txt(lr, `${isMine(m.home) ? "vs" : "@"} ${opp(m)}`, F_SUB, C.text, "semibold"); o.minimumScaleFactor = 0.7
-    w.addSpacer()
-  }
-  const nx = t.next
-  const lb = txt(w, nx ? `PROSSIMA · ${countdown(nx.ts).toUpperCase()}` : "PROSSIMA", 9, C.sub, "semibold"); lb.minimumScaleFactor = 0.8
-  w.addSpacer(2)
-  if (nx) {
-    const nr = w.addStack(); nr.centerAlignContent(); nr.spacing = 4
-    logo(nr, opp(nx), 13)
-    const o = txt(nr, `${isMine(nx.home) ? "vs" : "@"} ${opp(nx)}`, F_TXT, C.text, "semibold"); o.minimumScaleFactor = 0.7
-    txt(w, `${dayName(nx.ts)} ${fmtDate(nx.ts)} · ${fmtTime(nx.ts)}`, F_SUB, C.sub)
-  } else txt(w, "Nessuna in calendario", F_SUB, C.sub)
+}
+
+// Ultimo risultato su una riga: V/P con i set, logo e avversario
+function lastRow(stack, m, withLogo) {
+  const r = stack.addStack(); r.centerAlignContent(); r.spacing = 4; r.url = matchUrl(m)
+  lastChip(r, m)
+  if (withLogo) logo(r, opp(m), 13)
+  const o = txt(r, `${isMine(m.home) ? "vs" : "@"} ${opp(m)}`, F_TXT, C.text, "semibold"); o.minimumScaleFactor = 0.7
+  return r
+}
+
+// Prossima partita: etichetta con il conto alla rovescia, avversario, giorno e ora
+function nextLines(stack, m) {
+  const lb = txt(stack, `PROSSIMA · ${countdown(m.ts).toUpperCase()}`, 9, C.sub, "semibold"); lb.minimumScaleFactor = 0.8
+  stack.addSpacer(2)
+  const nr = stack.addStack(); nr.centerAlignContent(); nr.spacing = 4; nr.url = matchUrl(m)
+  logo(nr, opp(m), 13)
+  const o = txt(nr, `${isMine(m.home) ? "vs" : "@"} ${opp(m)}`, F_TXT, C.text, "semibold"); o.minimumScaleFactor = 0.7
+  txt(stack, `${dayName(m.ts)} ${fmtDate(m.ts)} · ${fmtTime(m.ts)}`, F_SUB, C.sub)
 }
 
 // ── panoramica media: a sinistra la squadra con ultima e prossima, a destra la classifica ──
@@ -1162,11 +1151,11 @@ function panoramaMedium(w, d) {
     when.addSpacer()
   } else txt(l, "Nessuna in calendario", F_SUB, C.sub)
 
-  const sep = row.addStack(); sep.size = new Size(1, 120); sep.backgroundColor = C.chip
+  const sep = row.addStack(); sep.size = new Size(1, 100); sep.backgroundColor = C.chip
 
   const r = row.addStack(); r.layoutVertically(); r.spacing = 2; r.size = new Size(rightW, 0)
   const hr = r.addStack(); hr.centerAlignContent()
-  sectionLabel(hr, "Classifica"); hr.addSpacer(); updatedLabel(hr, d)
+  sectionLabel(hr, "Classifica")
   r.addSpacer(2)
   // 5 righe: le prime, o quelle intorno alla tua squadra se è più in basso
   const s = d.standings, me = myStanding(d), i = me ? s.indexOf(me) : 0
@@ -1461,24 +1450,30 @@ ${h2h}
 
 function header(w, d, subtitle, compact) {
   const h = w.addStack(); h.centerAlignContent(); h.spacing = 7
-  const ic = h.addStack(); ic.size = new Size(compact ? 22 : 26, compact ? 22 : 26); ic.cornerRadius = compact ? 11 : 13
+  const ic = h.addStack(); ic.size = new Size(26, 26); ic.cornerRadius = 13
   ic.backgroundColor = C.accent; ic.centerAlignContent()
-  const img = symbol("volleyball.fill", compact ? 12 : 14)
-  if (img) { const i = ic.addImage(img); i.imageSize = new Size(compact ? 13 : 15, compact ? 13 : 15); i.tintColor = Color.white() }
+  const img = symbol("volleyball.fill", 14)
+  if (img) { const i = ic.addImage(img); i.imageSize = new Size(15, 15); i.tintColor = Color.white() }
   const tt = h.addStack(); tt.layoutVertically()
   if (compact) {
-    // nei piccoli il titolo ha tutta la riga; l'orario va accanto al sottotitolo
-    const t = txt(tt, d.title, 11, C.text, "bold"); t.minimumScaleFactor = 0.8
+    // nei piccoli il titolo ha tutta la riga; l'orario va a destra del sottotitolo
+    const t = txt(tt, d.title, 12, C.text, "bold"); t.minimumScaleFactor = 0.75
     const sr = tt.addStack(); sr.centerAlignContent()
-    const s = txt(sr, subtitle, 10, C.sub, "semibold"); s.minimumScaleFactor = 0.7
-    sr.addSpacer(4)
-    updatedLabel(sr, d)
+    const s = txt(sr, subtitle, F_SUB, C.sub, "semibold"); s.minimumScaleFactor = 0.7
     return
   }
   const t = txt(tt, d.title, 13, C.text, "bold"); t.minimumScaleFactor = 0.6
   const s = txt(tt, subtitle, 10, C.sub, "semibold"); s.minimumScaleFactor = 0.7
   h.addSpacer()
-  updatedLabel(h, d)
+}
+
+// Piè di pagina di tutti i widget: orario dell'aggiornamento, centrato.
+// In rosso con ⚠︎ se il sito non ha risposto e si mostrano i dati salvati.
+function footer(w, d) {
+  const when = isToday(d.fetched) ? fmtTime(d.fetched) : `${fmtDate(d.fetched)} ${fmtTime(d.fetched)}`
+  const f = w.addStack(); f.addSpacer()
+  txt(f, d.fromCache ? `⚠︎ Dati delle ${when}` : `Aggiornato alle ${when}`, 8.5, d.fromCache ? C.lose : C.sub)
+  f.addSpacer()
 }
 
 function updatedLabel(stack, d) {
