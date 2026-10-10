@@ -44,7 +44,12 @@ Ogni widget sceglie la sua vista: tieni premuto sul widget → **Modifica widget
 | la classifica | *(niente)* oppure `classifica` |
 | gli ultimi risultati e le prossime partite | `risultati` |
 | la scheda della tua squadra | `squadra` |
-| un po' di tutto: squadra, giornata e classifica | `panoramica` (pensata per il widget grande) |
+| un po' di tutto | `panoramica` |
+
+La **panoramica** cambia con la dimensione del widget:
+- **piccolo**: posizione, ultimo risultato e prossima partita;
+- **medio**: la tua squadra con ultima e prossima partita, accanto alla classifica;
+- **grande**: scheda della squadra, giornata in corso e classifica completa.
 
 ### Usi avanzati (facoltativo)
 Nel Parameter si possono aggiungere, separati da una **virgola**, un'altra squadra o un altro girone solo
