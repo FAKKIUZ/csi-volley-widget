@@ -57,11 +57,11 @@ const MED = (() => {
     "375x667": [321, 148], "320x568": [292, 141] }[`${sw}x${sh}`] || [Math.round(sw * 0.867), Math.round(sw * 0.405)]
   return { w: t[0] - PAD * 2, h: t[1] - 24 }
 })()
-// Misure reali del widget grande (punti). Riferimento: iPhone 12 Pro, 338×354 → contenuto 310×330.
-// Altri profili si aggiungeranno qui senza toccare quello del 12 Pro.
+// Misure reali del widget grande (punti). Riferimento: iPhone 12 Pro con iOS 27, 352×352
+// (misurate sugli screenshot) → contenuto 324×328. Altri profili si aggiungeranno qui senza toccare questo.
 const LRG = (() => {
   const sw = Math.round(Math.min(SCREEN.width, SCREEN.height)), sh = Math.round(Math.max(SCREEN.width, SCREEN.height))
-  const t = { "390x844": [338, 354], "393x852": [338, 354] }[`${sw}x${sh}`] || [WIDE, Math.round(WIDE * 1.05)]
+  const t = { "390x844": [352, 352] }[`${sw}x${sh}`] || [WIDE, Math.round(WIDE * 1.05)]
   return { w: t[0] - PAD * 2, h: t[1] - 24 }
 })()
 // scala dei caratteri della panoramica: testi 10,5 · dettagli 10 · etichette 9 (sectionLabel)
@@ -700,13 +700,14 @@ function textW(str, size) { return String(str).length * size * 0.55 }
 
 // Riga di classifica a due colonne del grande: colonnine di posizione e punti un po' più strette,
 // così i nomi lunghi (es. "Montello Thunders") entrano interi alla grandezza normale
-function largeStandingRow(stack, s, width) {
+function largeStandingRow(stack, s, width, arrows) {
   const r = stack.addStack(); r.centerAlignContent(); r.spacing = 4; r.setPadding(0, 2, 0, 2)
   r.size = new Size(width, 0)
   const mine = isMine(s.name)
   if (mine) { r.backgroundColor = C.hl; r.cornerRadius = 5 }
   cell(r, s.pos, 14, Font.semiboldRoundedSystemFont(F_SUB), s.pos === 1 ? C.accent : C.sub, "center", true)
-  if (TREND) trend(r, s, F_SUB)
+  // la colonnina delle frecce ▲▼ c'è solo quando almeno una squadra ha cambiato posizione
+  if (arrows) trend(r, s, F_SUB)
   logo(r, s.name, 13)
   const n = txt(r, s.name, F_TXT, mine ? C.hlText : C.text, mine ? "bold" : "regular"); n.minimumScaleFactor = 0.9
   r.addSpacer()
@@ -900,7 +901,7 @@ function formDots(stack, form, size) {
   return r
 }
 
-function teamCard(stack, d, t, logoSize, width) {
+function teamCard(stack, d, t, logoSize, width, tight) {
   const c = stack.addStack(); c.layoutVertically(); c.spacing = 3
   if (width) c.size = new Size(width, 0)
   const top = c.addStack(); top.centerAlignContent(); top.spacing = 8
@@ -918,23 +919,24 @@ function teamCard(stack, d, t, logoSize, width) {
   formDots(c, t.form, 11)
   if (t.me && d.standings.length > 2) {
     c.addSpacer(4)
-    miniTable(c, d, t.me, width)
+    miniTable(c, d, t.me, width, tight)
   }
   return c
 }
 
 // La squadra con chi le sta subito sopra e sotto, e il distacco in punti
-function miniTable(stack, d, me, width) {
+// tight (solo "La mia squadra" grande): colonnine di posizione e punti e margini più stretti, nomi più lunghi
+function miniTable(stack, d, me, width, tight) {
   const s = d.standings, i = s.indexOf(me)
   const from = Math.max(0, Math.min(i - 1, s.length - 3))
   const rows = s.slice(from, from + 3)
   const box = stack.addStack(); box.layoutVertically(); box.spacing = 2
   for (const x of rows) {
     const mine = x === me
-    const r = box.addStack(); r.centerAlignContent(); r.spacing = 4; r.setPadding(0, 2, 0, 4)
+    const r = box.addStack(); r.centerAlignContent(); r.spacing = tight ? 3 : 4; r.setPadding(0, 2, 0, tight ? 2 : 4)
     if (width) r.size = new Size(width, 0)
     if (mine) { r.backgroundColor = C.hl; r.cornerRadius = 5 }
-    cell(r, x.pos, 16, Font.semiboldRoundedSystemFont(F_SUB), x.pos === 1 ? C.accent : C.sub, "center")
+    cell(r, x.pos, tight ? 13 : 16, Font.semiboldRoundedSystemFont(F_SUB), x.pos === 1 ? C.accent : C.sub, "center")
     logo(r, x.name, 13)
     const n = txt(r, x.name, F_TXT, mine ? C.hlText : C.text, mine ? "bold" : "regular"); n.minimumScaleFactor = 0.8
     r.addSpacer()
@@ -942,7 +944,7 @@ function miniTable(stack, d, me, width) {
       const diff = x.pt - me.pt
       txt(r, diff > 0 ? `+${diff}` : diff < 0 ? `${diff}` : "=", F_SUB - 1, C.sub)
     }
-    cell(r, x.pt, 18, ptsFont(x, F_TXT), mine ? C.hlText : C.text, "center")
+    cell(r, x.pt, tight ? 14 : 18, ptsFont(x, F_TXT), mine ? C.hlText : C.text, "center")
   }
 }
 
@@ -1037,7 +1039,7 @@ function teamLarge(w, d) {
   w.addSpacer(10)
   const row = w.addStack(); row.topAlignContent(); row.spacing = 12
   const leftW = Math.round(LRG.w * 0.47)
-  teamCard(row, d, t, 40, leftW)
+  teamCard(row, d, t, 40, leftW, true)
   const r = row.addStack(); r.layoutVertically(); r.spacing = 2
   lastBlock(r, t, 11)
   r.addSpacer(6)
@@ -1091,9 +1093,9 @@ function panoramaLarge(w, d) {
     w.addSpacer()
     const box = w.addStack(); box.centerAlignContent(); box.spacing = 10
     box.size = new Size(LRG.w, 0)
-    box.setPadding(6, 8, 6, 8); box.cornerRadius = 12; box.backgroundColor = C.stripe
-    // colonna sinistra stretta quanto serve (logo, nome, forma): il resto va a ultima e prossima
-    const leftW = 104, rightW = LRG.w - 16 - leftW - 21
+    box.setPadding(6, 10, 6, 10); box.cornerRadius = 12; box.backgroundColor = C.stripe
+    // colonna sinistra larga quanto serve (logo, nome, forma): il resto va a ultima e prossima
+    const leftW = 110, rightW = LRG.w - 20 - leftW - 21
     const l = box.addStack(); l.layoutVertically(); l.spacing = 4; l.size = new Size(leftW, 0)
     const top = l.addStack(); top.centerAlignContent(); top.spacing = 7
     const ring = top.addStack(); ring.size = new Size(34, 34); ring.cornerRadius = 17
@@ -1168,9 +1170,10 @@ function panoramaLarge(w, d) {
     w.addSpacer(4)
     const row = w.addStack(); row.topAlignContent(); row.spacing = 12
     const colW = (LRG.w - 12) / 2
+    const arrows = !!TREND && st.some(x => TREND[x.name] && TREND[x.name] !== x.pos)
     for (const part of [st.slice(0, per), st.slice(per)]) {
       const c = row.addStack(); c.layoutVertically(); c.spacing = 2
-      for (const x of part) largeStandingRow(c, x, colW)
+      for (const x of part) largeStandingRow(c, x, colW, arrows)
     }
   }
   w.addSpacer()
