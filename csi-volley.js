@@ -701,7 +701,7 @@ function textW(str, size) { return String(str).length * size * 0.55 }
 // Riga di classifica a due colonne del grande: colonnine di posizione e punti un po' più strette,
 // così i nomi lunghi (es. "Montello Thunders") entrano interi alla grandezza normale
 function largeStandingRow(stack, s, width, arrows) {
-  const r = stack.addStack(); r.centerAlignContent(); r.spacing = 4; r.setPadding(0, 2, 0, 2)
+  const r = stack.addStack(); r.centerAlignContent(); r.spacing = 3; r.setPadding(0, 2, 0, 2)
   r.size = new Size(width, 0)
   const mine = isMine(s.name)
   if (mine) { r.backgroundColor = C.hl; r.cornerRadius = 5 }
@@ -711,7 +711,7 @@ function largeStandingRow(stack, s, width, arrows) {
   logo(r, s.name, 13)
   const n = txt(r, s.name, F_TXT, mine ? C.hlText : C.text, mine ? "bold" : "regular"); n.minimumScaleFactor = 0.9
   r.addSpacer()
-  cell(r, s.pt, 16, ptsFont(s, F_TXT), ptsColor(s), "center")
+  cell(r, s.pt, 14, ptsFont(s, F_TXT), ptsColor(s), "center")
 }
 
 // Partita su una riga: Casa [logo] [punteggio] [logo] Ospite (+ parziali sotto)
@@ -1091,16 +1091,16 @@ function panoramaLarge(w, d) {
   // ── scheda squadra: a sinistra posizione e forma, a destra ultima e prossima ──
   if (TEAM && (t.me || t.last || t.next)) {
     w.addSpacer()
-    const box = w.addStack(); box.centerAlignContent(); box.spacing = 10
+    const box = w.addStack(); box.centerAlignContent(); box.spacing = 11
     box.size = new Size(LRG.w, 0)
-    box.setPadding(6, 10, 6, 10); box.cornerRadius = 12; box.backgroundColor = C.stripe
+    box.setPadding(8, 10, 8, 10); box.cornerRadius = 12; box.backgroundColor = C.stripe
     // colonna sinistra larga quanto serve (logo, nome, forma): il resto va a ultima e prossima
-    const leftW = 110, rightW = LRG.w - 20 - leftW - 21
-    const l = box.addStack(); l.layoutVertically(); l.spacing = 4; l.size = new Size(leftW, 0)
+    const leftW = 112, rightW = LRG.w - 20 - leftW - 23
+    const l = box.addStack(); l.layoutVertically(); l.spacing = 6; l.size = new Size(leftW, 0)
     const top = l.addStack(); top.centerAlignContent(); top.spacing = 7
-    const ring = top.addStack(); ring.size = new Size(34, 34); ring.cornerRadius = 17
+    const ring = top.addStack(); ring.size = new Size(38, 38); ring.cornerRadius = 19
     ring.borderColor = C.accent; ring.borderWidth = 2; ring.centerAlignContent()
-    logo(ring, TEAM, 27)
+    logo(ring, TEAM, 30)
     const nm = top.addStack(); nm.layoutVertically(); nm.spacing = 0
     const n = txt(nm, TEAM, 13, C.text, "bold"); n.minimumScaleFactor = 0.7
     if (t.me) {
@@ -1110,9 +1110,9 @@ function panoramaLarge(w, d) {
     }
     const dr = l.addStack(); dotsOnly(dr, t.form, 9); dr.addSpacer()
 
-    const sep = box.addStack(); sep.size = new Size(1, 50); sep.backgroundColor = C.chip
+    const sep = box.addStack(); sep.size = new Size(1, 64); sep.backgroundColor = C.chip
 
-    const r = box.addStack(); r.layoutVertically(); r.spacing = 1; r.size = new Size(rightW, 0)
+    const r = box.addStack(); r.layoutVertically(); r.spacing = 2; r.size = new Size(rightW, 0)
     const m = t.last
     sectionLabel(r, "Ultima")
     if (m) {
@@ -1121,7 +1121,7 @@ function panoramaLarge(w, d) {
       logo(lr, opp(m), 13)
       const o = txt(lr, `${isMine(m.home) ? "vs" : "@"} ${opp(m)}`, F_TXT, C.text, "semibold"); o.minimumScaleFactor = 0.75
     } else txt(r, "—", F_TXT, C.sub)
-    r.addSpacer(3)
+    r.addSpacer(5)
     const nx = t.next
     sectionLabel(r, nx ? `Prossima · ${countdown(nx.ts)}` : "Prossima")
     if (nx) {
@@ -1143,7 +1143,7 @@ function panoramaLarge(w, d) {
       }
     } else txt(r, "Nessuna in calendario", F_TXT, C.sub)
     box.addSpacer()
-    avail -= 82
+    avail -= 90
   }
 
   // ── classifica in due colonne: se ne calcola l'altezza per lasciare il resto alla giornata ──
@@ -1168,8 +1168,8 @@ function panoramaLarge(w, d) {
     w.addSpacer()
     sectionLabel(w, "Classifica")
     w.addSpacer(4)
-    const row = w.addStack(); row.topAlignContent(); row.spacing = 12
-    const colW = (LRG.w - 12) / 2
+    const row = w.addStack(); row.topAlignContent(); row.spacing = 8
+    const colW = (LRG.w - 8) / 2
     const arrows = !!TREND && st.some(x => TREND[x.name] && TREND[x.name] !== x.pos)
     for (const part of [st.slice(0, per), st.slice(per)]) {
       const c = row.addStack(); c.layoutVertically(); c.spacing = 2
