@@ -48,6 +48,15 @@ const WIDE = Math.round(Math.min(SCREEN.width, SCREEN.height) * 0.89) // larghez
 const PAD = 14
 const INNER = WIDE - PAD * 2
 const INNER_SMALL = Math.round(WIDE * 0.467) - PAD * 2
+// Misure reali del widget medio (punti), dalle tabelle Apple per i vari iPhone; per gli altri una stima.
+// Servono ai medi per usare tutta l'altezza: contenuto = misure meno i margini (14 ai lati, 12 sopra e sotto).
+const MED = (() => {
+  const sw = Math.round(Math.min(SCREEN.width, SCREEN.height)), sh = Math.round(Math.max(SCREEN.width, SCREEN.height))
+  const t = { "430x932": [364, 170], "428x926": [364, 170], "414x896": [360, 169], "414x736": [348, 157],
+    "393x852": [338, 158], "390x844": [338, 158], "375x812": [329, 155], "360x780": [329, 155],
+    "375x667": [321, 148], "320x568": [292, 141] }[`${sw}x${sh}`] || [Math.round(sw * 0.867), Math.round(sw * 0.405)]
+  return { w: t[0] - PAD * 2, h: t[1] - 24 }
+})()
 // scala dei caratteri della panoramica: testi 10,5 · dettagli 10 · etichette 9 (sectionLabel)
 const F_TXT = 10.5, F_SUB = 10
 let LOGOS = {}
@@ -456,9 +465,9 @@ function standingsMedium(w, d) {
   const s = d.standings.slice(0, 12)
   const per = Math.ceil(s.length / 2)
   const row = w.addStack(); row.topAlignContent(); row.spacing = 12
-  // altezza utile del medio, tolta l'intestazione: le righe si distribuiscono su quella
-  const avail = WIDE * 0.47 - 24 - 34
-  const gap = Math.max(1, Math.min(8, (avail - per * 15) / Math.max(1, per - 1)))
+  // altezza utile del medio, tolta l'intestazione (~30) e il suo stacco: le righe si distribuiscono su quella
+  const avail = MED.h - 30
+  const gap = Math.max(1, Math.min(10, (avail - per * 14) / Math.max(1, per - 1)))
   const ns = rowNameSize(s, (INNER - 12) / 2)
   for (const part of [s.slice(0, per), s.slice(per)]) {
     const c = row.addStack(); c.layoutVertically(); c.spacing = gap
@@ -944,31 +953,35 @@ function teamSmall(w, d) {
 
 function teamMedium(w, d) {
   const t = teamData(d)
-  const row = w.addStack(); row.topAlignContent(); row.spacing = 10
-  const leftW = Math.round((INNER - 21) / 2), rightW = INNER - 21 - leftW
+  // due colonne alte quanto il widget: gli spazi flessibili distribuiscono i blocchi su tutta l'altezza
+  const H = MED.h - 2
+  const row = w.addStack(); row.topAlignContent(); row.spacing = 10; row.size = new Size(MED.w, H)
+  const leftW = Math.round((MED.w - 21) / 2), rightW = MED.w - 21 - leftW
 
-  // a sinistra: squadra, numeri, forma e chi le sta vicino in classifica
-  const l = row.addStack(); l.layoutVertically(); l.size = new Size(leftW, 0)
+  // a sinistra: squadra, numeri e forma, poi chi le sta vicino in classifica
+  const l = row.addStack(); l.layoutVertically(); l.size = new Size(leftW, H)
   smallTeamTop(l, d, t)
-  l.addSpacer(6)
+  l.addSpacer()
   if (t.me) { txt(l, `G ${t.me.pg} · V ${t.me.v} · P ${t.me.p} · set ${t.me.sv}-${t.me.sp}`, F_SUB, C.sub); l.addSpacer(4) }
   const fr = l.addStack(); fr.centerAlignContent(); fr.spacing = 6
   txt(fr, "FORMA", 9, C.sub, "semibold"); dotsOnly(fr, t.form, 9)
-  if (t.me && d.standings.length > 2) { l.addSpacer(6); miniTable(l, d, t.me) }
+  if (t.me && d.standings.length > 2) { l.addSpacer(); miniTable(l, d, t.me) }
 
-  const sep = row.addStack(); sep.size = new Size(1, 110); sep.backgroundColor = C.chip
+  const sep = row.addStack(); sep.size = new Size(1, H - 8); sep.backgroundColor = C.chip
 
-  // a destra: ultima (con i parziali) e prossima con la palestra
-  const r = row.addStack(); r.layoutVertically(); r.size = new Size(rightW, 0)
-  sectionLabel(r, "Ultima"); r.addSpacer(2)
+  // a destra: ULTIMA in alto, PROSSIMA in basso, lo spazio libero in mezzo
+  const r = row.addStack(); r.layoutVertically(); r.size = new Size(rightW, H)
+  sectionLabel(r, "Ultima"); r.addSpacer(3)
   if (t.last) {
     lastRow(r, t.last, true)
-    if (t.last.parziali.length) { const p = txt(r, t.last.parziali.map(x => x.join("-")).join(" · "), F_SUB - 1, t.last.ufficioso ? C.uff : C.sub); p.minimumScaleFactor = 0.75 }
+    if (t.last.parziali.length) {
+      r.addSpacer(2)
+      const p = txt(r, t.last.parziali.map(x => x.join("-")).join(" · "), F_SUB, t.last.ufficioso ? C.uff : C.sub); p.minimumScaleFactor = 0.8
+    }
   } else txt(r, "—", F_SUB, C.sub)
-  r.addSpacer(10)
+  r.addSpacer()
   if (t.next) { nextLines(r, t.next); venueLine(r, d, t.next) }
   else { sectionLabel(r, "Prossima"); txt(r, "Nessuna in calendario", F_SUB, C.sub) }
-  w.addSpacer()
 }
 
 function teamLarge(w, d) {
@@ -1169,27 +1182,30 @@ function nextLines(stack, m) {
 // ── panoramica media: a sinistra la squadra con ultima e prossima, a destra la classifica ──
 function panoramaMedium(w, d) {
   const t = teamData(d)
-  const row = w.addStack(); row.topAlignContent(); row.spacing = 10
-  const leftW = Math.round((INNER - 21) / 2), rightW = INNER - 21 - leftW
+  const H = MED.h - 2
+  const row = w.addStack(); row.topAlignContent(); row.spacing = 10; row.size = new Size(MED.w, H)
+  const leftW = Math.round((MED.w - 21) / 2), rightW = MED.w - 21 - leftW
 
-  // a sinistra: la squadra (come nel piccolo) e la prossima partita
-  const l = row.addStack(); l.layoutVertically(); l.size = new Size(leftW, 0)
+  // a sinistra: la squadra, l'ultimo risultato e la prossima partita, distribuiti su tutta l'altezza
+  const l = row.addStack(); l.layoutVertically(); l.size = new Size(leftW, H)
   smallTeamTop(l, d, t)
-  l.addSpacer(8)
-  if (t.last) { lastRow(l, t.last, false); l.addSpacer(8) }
+  l.addSpacer()
+  if (t.last) { lastRow(l, t.last, false); l.addSpacer() }
   if (t.next) { nextLines(l, t.next); venueLine(l, d, t.next) }
   else txt(l, "Nessuna in calendario", F_SUB, C.sub)
 
-  const sep = row.addStack(); sep.size = new Size(1, 110); sep.backgroundColor = C.chip
+  const sep = row.addStack(); sep.size = new Size(1, H - 8); sep.backgroundColor = C.chip
 
-  // a destra: 5 righe di classifica, le prime o quelle intorno alla tua squadra
-  const r = row.addStack(); r.layoutVertically(); r.spacing = 5; r.size = new Size(rightW, 0)
+  // a destra: 5 righe di classifica (le prime o quelle intorno alla tua squadra) su tutta l'altezza
+  const r = row.addStack(); r.layoutVertically(); r.size = new Size(rightW, H)
   sectionLabel(r, "Classifica")
   const s = d.standings, me = myStanding(d), i = me ? s.indexOf(me) : 0
   const from = Math.max(0, Math.min(i - 2, s.length - 5))
   const rows5 = s.slice(from, from + 5), ns = rowNameSize(rows5, rightW)
-  for (const x of rows5) panoStandingRow(r, x, ns)
-  w.addSpacer()
+  // spazio tra le righe: quello che resta, diviso equamente, senza superare 10 punti
+  const gap = Math.max(3, Math.min(10, (H - 13 - rows5.length * 14.5) / rows5.length))
+  for (const x of rows5) { r.addSpacer(gap); panoStandingRow(r, x, ns) }
+  r.addSpacer()
 }
 
 // Palestra della partita (tocco: percorso con il navigatore predefinito)
