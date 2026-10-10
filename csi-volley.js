@@ -994,42 +994,40 @@ function panoramaLarge(w, d) {
     w.addSpacer()
     const box = w.addStack(); box.centerAlignContent(); box.spacing = 10
     box.size = new Size(INNER, 0)
-    box.setPadding(8, 10, 8, 10); box.cornerRadius = 12; box.backgroundColor = C.stripe
-    const leftW = Math.round((INNER - 20) * 0.4)
-    const l = box.addStack(); l.layoutVertically(); l.spacing = 5; l.size = new Size(leftW, 0)
+    box.setPadding(6, 10, 6, 10); box.cornerRadius = 12; box.backgroundColor = C.stripe
+    const l = box.addStack(); l.layoutVertically(); l.spacing = 4
     const top = l.addStack(); top.centerAlignContent(); top.spacing = 7
-    const ring = top.addStack(); ring.size = new Size(36, 36); ring.cornerRadius = 18
+    const ring = top.addStack(); ring.size = new Size(34, 34); ring.cornerRadius = 17
     ring.borderColor = C.accent; ring.borderWidth = 2; ring.centerAlignContent()
-    logo(ring, TEAM, 29)
+    logo(ring, TEAM, 27)
     const nm = top.addStack(); nm.layoutVertically(); nm.spacing = 0
     const n = txt(nm, TEAM, 12.5, C.text, "bold"); n.minimumScaleFactor = 0.7
     if (t.me) {
       const p = nm.addStack(); p.bottomAlignContent(); p.spacing = 4
-      txt(p, `${t.me.pos}°`, 17, C.hlText, "bold")
+      txt(p, `${t.me.pos}°`, 16, C.hlText, "bold")
       txt(p, `${t.me.pt} pt`, 11, C.text, "semibold")
     }
-    top.addSpacer()
-    dotsOnly(l, t.form, 10)
+    const dr = l.addStack(); dotsOnly(dr, t.form, 9); dr.addSpacer()
 
-    const sep = box.addStack(); sep.size = new Size(1, 54); sep.backgroundColor = C.chip
+    const sep = box.addStack(); sep.size = new Size(1, 50); sep.backgroundColor = C.chip
 
-    const r = box.addStack(); r.layoutVertically(); r.spacing = 2
+    const r = box.addStack(); r.layoutVertically(); r.spacing = 1
     const m = t.last
     sectionLabel(r, "Ultima")
     if (m) {
       const lr = r.addStack(); lr.centerAlignContent(); lr.spacing = 5; lr.url = matchUrl(m)
       const wn = won(m)
       const chip = lr.addStack(); chip.setPadding(1, 5, 1, 5); chip.cornerRadius = 5; chip.backgroundColor = wn ? C.win : C.lose
-      const ct = chip.addText(`${wn ? "V" : "P"} ${homeAway(m)}`); ct.font = Font.boldRoundedSystemFont(10.5); ct.textColor = Color.white()
-      logo(lr, opp(m), 14)
+      const ct = chip.addText(`${wn ? "V" : "P"} ${homeAway(m)}`); ct.font = Font.boldRoundedSystemFont(10); ct.textColor = Color.white()
+      logo(lr, opp(m), 13)
       const o = txt(lr, `${isMine(m.home) ? "vs" : "@"} ${opp(m)}`, 10.5, C.text); o.minimumScaleFactor = 0.75
     } else txt(r, "—", 10.5, C.sub)
-    r.addSpacer(5)
+    r.addSpacer(4)
     const nx = t.next
     sectionLabel(r, nx ? `Prossima · ${countdown(nx.ts)}` : "Prossima")
     if (nx) {
       const nr = r.addStack(); nr.centerAlignContent(); nr.spacing = 5; nr.url = matchUrl(nx)
-      logo(nr, opp(nx), 14)
+      logo(nr, opp(nx), 13)
       const o = txt(nr, `${isMine(nx.home) ? "vs" : "@"} ${opp(nx)}`, 10.5, C.text, "semibold"); o.minimumScaleFactor = 0.75
       const when = r.addStack(); when.centerAlignContent(); when.spacing = 4
       txt(when, `${dayName(nx.ts)} ${fmtDate(nx.ts)} · ${fmtTime(nx.ts)}`, 9.5, C.sub)
@@ -1041,24 +1039,25 @@ function panoramaLarge(w, d) {
         const vt = txt(vs, venueCity(v) || venueName(v), 9.5, C.sub); vt.minimumScaleFactor = 0.7
       }
     } else txt(r, "Nessuna in calendario", 10.5, C.sub)
-    avail -= 86
+    box.addSpacer()
+    avail -= 80
   }
 
   // ── classifica in due colonne: se ne calcola l'altezza per lasciare il resto alla giornata ──
   const st = d.standings.slice(0, 14)
   const per = Math.ceil(st.length / 2)
-  const standH = 16 + per * 16 + (per - 1) * 2
+  const standH = 16 + per * 15 + (per - 1) * 2
 
   if (g.cur) {
     w.addSpacer()
     sectionLabel(w, prettyGiornata(g.cur.label))
     w.addSpacer(4)
     const free = avail - standH - 16
-    const fit = Math.max(2, Math.floor((free + 3) / 21))
+    const fit = Math.max(2, Math.floor((free + 2) / 21))
     const ms = g.cur.matches.slice(0, fit)
-    const list = w.addStack(); list.layoutVertically(); list.spacing = 3
-    const lay = rowLayout(ms, INNER, 10.5)
-    ms.forEach(m => matchRow(list, m, INNER, 10.5, false, true, lay))
+    const list = w.addStack(); list.layoutVertically(); list.spacing = 2
+    const lay = rowLayout(ms, INNER, 10)
+    ms.forEach(m => matchRow(list, m, INNER, 10, false, true, lay))
   }
 
   if (st.length) {
@@ -1067,10 +1066,10 @@ function panoramaLarge(w, d) {
     w.addSpacer(4)
     const row = w.addStack(); row.topAlignContent(); row.spacing = 12
     const colW = (INNER - 12) / 2
-    const nameSize = Math.min(10.5, fitNames(st, colW, 10.5, 14) + 0.5)
+    const nameSize = Math.min(10.5, fitNames(st, colW, 10, 13) + 0.5)
     for (const part of [st.slice(0, per), st.slice(per)]) {
       const c = row.addStack(); c.layoutVertically(); c.spacing = 2
-      for (const x of part) standingRowCompact(c, x, colW, 10.5, 14, nameSize)
+      for (const x of part) standingRowCompact(c, x, colW, 10, 13, nameSize)
     }
   }
   w.addSpacer()
