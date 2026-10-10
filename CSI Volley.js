@@ -421,16 +421,18 @@ async function buildWidget(d, family, view) {
     squadra: [teamSmall, teamMedium, teamLarge],
   }[view] || [standingsSmall, standingsMedium, standingsLarge]
   // formati oltre il grande (extra large su iPad, verticale alto di iOS 27…): panoramica
-  if (!["small", "medium", "large"].includes(family)) { dashboard(w, d); return w }
+  if (!["small", "medium", "large"].includes(family)) { dashboard(w, d); footer(w, d); return w }
   if (view === "panoramica") {
     // senza squadra la panoramica piccola e media ripiegano sulla classifica
     const noTeam = !TEAM || (!myStanding(d) && !d.matches.some(isMyMatch))
     const fs = noTeam ? [standingsSmall, standingsMedium, panoramaLarge] : [panoramaSmall, panoramaMedium, panoramaLarge]
     fs[family === "small" ? 0 : family === "medium" ? 1 : 2](w, d)
+    footer(w, d)
     return w
   }
   if (view === "squadra" && !myStanding(d) && !d.matches.some(isMyMatch)) return noTeamWidget(w)
   layouts[family === "small" ? 0 : family === "medium" ? 1 : 2](w, d)
+  footer(w, d)
   return w
 }
 
@@ -440,7 +442,7 @@ function standingsSmall(w, d) {
   header(w, d, "Classifica", true)
   w.addSpacer(6)
   const rows = pickStandings(d, 5)
-  const avail = WIDE * 0.467 - 58 // altezza utile del piccolo (quadrato)
+  const avail = WIDE * 0.467 - 58 - 13 // altezza utile del piccolo (quadrato), tolto il piè di pagina
   const col = w.addStack(); col.layoutVertically()
   col.spacing = Math.max(2, Math.min(10, (avail - rows.length * 16) / Math.max(1, rows.length - 1)))
   const ns = Math.min(F_TXT, fitNames(rows, INNER_SMALL, F_TXT, 13))
@@ -457,7 +459,7 @@ function standingsMedium(w, d) {
   const colW = (INNER - 12) / 2
   // altezza del widget medio ≈ 0,47 × larghezza; le righe si distribuiscono su quella disponibile
   const logoSize = per > 5 ? 14 : 16, rowH = logoSize + 1.5
-  const avail = WIDE * 0.47 - 54
+  const avail = WIDE * 0.47 - 54 - 13
   const gap = Math.max(1, Math.min(10, (avail - per * rowH) / Math.max(1, per - 1)))
   const nameSize = Math.min(11.5, fitNames(s, colW, 11, logoSize) + 0.5)
   for (const part of [s.slice(0, per), s.slice(per)]) {
@@ -576,7 +578,7 @@ function resultsMedium(w, d) {
   const list = w.addStack(); list.layoutVertically(); list.spacing = 3
   const ms = g.cur ? g.cur.matches : []
   list.spacing = 2
-  const shown = ms.slice(0, 6), lay = rowLayout(shown, INNER, ms.length > 5 ? 10 : 11)
+  const shown = ms.slice(0, 5), lay = rowLayout(shown, INNER, 10)
   shown.forEach(m => matchRow(list, m, INNER, ms.length > 5 ? 10 : 11, false, true, lay))
   if (!ms.length) txt(list, "Nessuna partita", 11, C.sub)
   w.addSpacer()
@@ -586,7 +588,7 @@ function resultsLarge(w, d) {
   const g = currentGiornata(d)
   header(w, d, "Risultati")
   w.addSpacer(8)
-  let budget = WIDE * 1.05 - 38
+  let budget = WIDE * 1.05 - 38 - 13
   if (g.cur) {
     sectionLabel(w, prettyGiornata(g.cur.label))
     w.addSpacer(3)
@@ -669,12 +671,9 @@ function scoreboard(stack, m, size, nameSize) {
     t.minimumScaleFactor = 0.9
     r.addSpacer()
     if (m.sets) txt(r, m.sets[side], size + 1, m.ufficioso ? C.uff : won ? C.text : C.sub, won ? "bold" : "regular")
+    // partita da giocare: giorno sulla prima riga, ora sulla seconda
+    else txt(r, side ? fmtTime(m.ts) : isToday(m.ts) ? "oggi" : `${dayName(m.ts)} ${fmtDate(m.ts)}`, F_SUB, C.sub, "semibold")
   })
-  if (!m.sets) {
-    const when = box.addStack(); when.addSpacer()
-    txt(when, `${isToday(m.ts) ? "oggi" : `${dayName(m.ts)} ${fmtDate(m.ts)}`} · ${fmtTime(m.ts)}`, F_SUB, C.sub)
-    when.addSpacer()
-  }
 }
 
 // ── lock screen ──
@@ -848,13 +847,7 @@ function miniTable(stack, d, me, width) {
 
 function lastBlock(stack, t, size, d) {
   const m = t.last
-  if (d) {
-    // nel medio non c'è l'intestazione: l'orario dell'aggiornamento va sulla riga "Ultima"
-    const h = stack.addStack(); h.centerAlignContent()
-    sectionLabel(h, "Ultima")
-    h.addSpacer()
-    updatedLabel(h, d)
-  } else sectionLabel(stack, "Ultima")
+  sectionLabel(stack, "Ultima")
   if (!m) { txt(stack, "—", size, C.sub); return }
   const r = stack.addStack(); r.centerAlignContent(); r.spacing = 5; r.url = matchUrl(m)
   const w = won(m)
@@ -931,7 +924,7 @@ function teamLarge(w, d) {
   w.addSpacer(3)
   const list = w.addStack(); list.layoutVertically(); list.spacing = 2
   // altezza del grande ≈ 1,05 × larghezza: le righe del calendario sono quante ne entrano
-  const n = Math.max(3, Math.min(8, Math.floor((WIDE * 1.05 - 222) / 24)))
+  const n = Math.max(3, Math.min(8, Math.floor((WIDE * 1.05 - 222 - 13) / 24)))
   const past = Math.min(t.pl.length, t.up.length ? 2 : n)
   const cal = t.pl.slice(0, past).reverse().concat(t.up).slice(0, n)
   cal.forEach((m, i) => calendarRow(list, m, i % 2 === 0, t.next && m.code === t.next.code))
@@ -970,7 +963,7 @@ function panoramaLarge(w, d) {
   const t = teamData(d)
   const g = currentGiornata(d)
   header(w, d, "Panoramica")
-  let avail = WIDE * 1.05 - 24 - 30 // altezza utile del grande, tolta l'intestazione
+  let avail = WIDE * 1.05 - 24 - 30 - 13 // altezza utile del grande, tolte intestazione e piè di pagina
 
   // ── scheda squadra: a sinistra posizione e forma, a destra ultima e prossima ──
   if (TEAM && (t.me || t.last || t.next)) {
@@ -1089,8 +1082,6 @@ function smallTeamTop(w, d, t) {
     txt(p, `${t.me.pos}°`, F_SUB, C.hlText, "bold")
     txt(p, `· ${t.me.pt} pt`, F_SUB, C.sub, "semibold")
   }
-  p.addSpacer()
-  updatedLabel(p, d)
 }
 
 // Ultimo risultato su una riga: V/P con i set, logo e avversario
@@ -1160,11 +1151,11 @@ function panoramaMedium(w, d) {
     when.addSpacer()
   } else txt(l, "Nessuna in calendario", F_SUB, C.sub)
 
-  const sep = row.addStack(); sep.size = new Size(1, 120); sep.backgroundColor = C.chip
+  const sep = row.addStack(); sep.size = new Size(1, 100); sep.backgroundColor = C.chip
 
   const r = row.addStack(); r.layoutVertically(); r.spacing = 2; r.size = new Size(rightW, 0)
   const hr = r.addStack(); hr.centerAlignContent()
-  sectionLabel(hr, "Classifica"); hr.addSpacer(); updatedLabel(hr, d)
+  sectionLabel(hr, "Classifica")
   r.addSpacer(2)
   // 5 righe: le prime, o quelle intorno alla tua squadra se è più in basso
   const s = d.standings, me = myStanding(d), i = me ? s.indexOf(me) : 0
@@ -1469,14 +1460,20 @@ function header(w, d, subtitle, compact) {
     const t = txt(tt, d.title, 12, C.text, "bold"); t.minimumScaleFactor = 0.75
     const sr = tt.addStack(); sr.centerAlignContent()
     const s = txt(sr, subtitle, F_SUB, C.sub, "semibold"); s.minimumScaleFactor = 0.7
-    sr.addSpacer()
-    updatedLabel(sr, d)
     return
   }
   const t = txt(tt, d.title, 13, C.text, "bold"); t.minimumScaleFactor = 0.6
   const s = txt(tt, subtitle, 10, C.sub, "semibold"); s.minimumScaleFactor = 0.7
   h.addSpacer()
-  updatedLabel(h, d)
+}
+
+// Piè di pagina di tutti i widget: orario dell'aggiornamento, centrato.
+// In rosso con ⚠︎ se il sito non ha risposto e si mostrano i dati salvati.
+function footer(w, d) {
+  const when = isToday(d.fetched) ? fmtTime(d.fetched) : `${fmtDate(d.fetched)} ${fmtTime(d.fetched)}`
+  const f = w.addStack(); f.addSpacer()
+  txt(f, d.fromCache ? `⚠︎ Dati delle ${when}` : `Aggiornato alle ${when}`, 8.5, d.fromCache ? C.lose : C.sub)
+  f.addSpacer()
 }
 
 function updatedLabel(stack, d) {
