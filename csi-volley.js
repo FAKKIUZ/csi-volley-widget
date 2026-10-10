@@ -439,7 +439,11 @@ async function buildWidget(d, family, view) {
 // ── classifica ──
 
 function standingsSmall(w, d) {
-  header(w, d, "Classifica", true)
+  const h = header(w, d, "Classifica", true)
+  // "PT" in basso a destra dell'intestazione, allineato alla colonna dei punti: niente riga in più
+  const pc = h.addStack(); pc.layoutVertically(); pc.addSpacer()
+  cell(pc, "PT", 18, Font.semiboldSystemFont(9), C.sub, "center")
+  h.addSpacer(4)
   w.addSpacer(6)
   const rows = pickStandings(d, 5)
   const avail = WIDE * 0.467 - 58 // altezza utile del piccolo (quadrato)
@@ -547,27 +551,65 @@ function posBadge(stack, pos, width, size) {
 
 function resultsSmall(w, d) {
   const g = currentGiornata(d)
-  let list, sub
-  if (TEAM) {
-    const last = played(d).find(isMyMatch)
-    const next = upcoming(d).find(isMyMatch)
-    list = [last, next].filter(Boolean)
-    sub = TEAM
-  } else {
-    list = g.cur ? g.cur.matches.slice().sort((a, b) => (b.sets ? 1 : 0) - (a.sets ? 1 : 0) || a.ts - b.ts).slice(0, 2) : []
-    sub = g.cur ? prettyGiornata(g.cur.label, true) : "Risultati"
+  const label = g.cur ? g.cur.label : ""
+  header(w, d, label ? `Giornata ${String(label).match(/(\d+)\s*$/) ? String(label).match(/(\d+)\s*$/)[1] : ""}`.trim() : "Risultati", true)
+  w.addSpacer()
+  const ms = g.cur ? g.cur.matches.slice(0, 5) : []
+  if (!ms.length) { txt(w, "Nessuna partita", F_TXT, C.sub); w.addSpacer(); return }
+  const ab = shortNames(allTeams(d))
+  const list = w.addStack(); list.layoutVertically(); list.spacing = 3
+  for (const m of ms) roundRowSmall(list, m, ab)
+  w.addSpacer()
+}
+
+// Partita della giornata in una riga: logo, nome breve, punteggio (o data/ora), nome breve, logo.
+// Riga gialla se gioca la squadra seguita, punteggio rosso se non ancora ufficiale.
+function roundRowSmall(stack, m, ab) {
+  const r = stack.addStack(); r.centerAlignContent(); r.spacing = 3; r.setPadding(2, 3, 2, 3); r.cornerRadius = 6
+  r.backgroundColor = isMyMatch(m) ? C.hl : C.stripe
+  const hw = m.sets && m.sets[0] > m.sets[1], aw = m.sets && m.sets[1] > m.sets[0]
+  const nameFont = (win, mine) => win || mine ? Font.semiboldSystemFont(9.5) : Font.systemFont(9.5)
+  const nameColor = (lose, mine) => mine ? C.hlText : lose ? C.sub : C.text
+  logo(r, m.home, 12)
+  cell(r, ab[m.home] || m.home, "flex", nameFont(hw, isMine(m.home)), nameColor(aw, isMine(m.home)), "left", true)
+  const c = r.addStack(); c.size = new Size(34, 0); c.centerAlignContent(); c.cornerRadius = 4; c.setPadding(1, 0, 1, 0)
+  if (m.sets) c.backgroundColor = C.chip
+  else { c.borderColor = C.chip; c.borderWidth = 1 }
+  const ct = c.addText(m.sets ? `${m.sets[0]}-${m.sets[1]}` : isToday(m.ts) ? fmtTime(m.ts) : fmtDate(m.ts))
+  ct.font = m.sets ? Font.boldRoundedSystemFont(F_SUB) : Font.mediumSystemFont(8.5)
+  ct.textColor = m.sets ? (m.ufficioso ? C.uff : C.text) : C.sub; ct.lineLimit = 1; ct.minimumScaleFactor = 0.8
+  cell(r, ab[m.away] || m.away, "flex", nameFont(aw, isMine(m.away)), nameColor(hw, isMine(m.away)), "right", true)
+  logo(r, m.away, 12)
+}
+
+// Nomi brevi (al massimo 7 caratteri), riconoscibili e tutti diversi tra loro:
+// "Pol.Com.Tavernola" → "Tavern.", "Pcq 1971" → "Pcq", "Volley 2c" → "Vol. 2c", "San Pancrazio" → "S.Panc."
+function shortNames(names) {
+  const GENERIC = /^(pol|polisportiva|com|or|oratorio|gso|gs|us|as|asd|ssd|a\.s\.d|s\.s\.d|volley|pallavolo|pvo|team|sport|ac|sc|usd|cs|csi)$/i
+  const MAX = 7
+  const base = n => {
+    const clean = String(n).trim()
+    if (clean.length <= MAX) return clean
+    const words = clean.split(/[\s.]+/).filter(Boolean)
+    const keep = words.filter(x => !GENERIC.test(x) && !/^\d{4}$/.test(x))
+    const gen = words.filter(x => GENERIC.test(x))
+    let out
+    if (!keep.length) out = words[0]
+    else if (keep.join(" ").length < 3 && gen.length) out = `${gen[0].slice(0, 3)}. ${keep.join(" ")}`
+    else if (keep.length > 1 && keep[0].length <= 3) out = `${keep[0][0]}.${keep.slice(1).join("")}`
+    else out = keep[0]
+    out = out.charAt(0).toUpperCase() + out.slice(1)
+    // troppo lungo: si accorcia con il punto, come un'abbreviazione ("Zandobbio" → "Zandob.")
+    return out.length <= MAX ? out : out.slice(0, MAX - 1).replace(/[.\s]+$/, "") + "."
   }
-  header(w, d, sub, true)
-  w.addSpacer()
-  const longest = Math.max(1, ...list.flatMap(m => [m.home.length, m.away.length]))
-  const ns = Math.max(8.5, Math.min(F_TXT, Math.floor((INNER_SMALL - 52) / (longest * 0.55) * 2) / 2))
-  list.forEach((m, i) => {
-    if (i) w.addSpacer()
-    if (m.sets || !TEAM) scoreboard(w, m, F_TXT, ns)
-    else nextLines(w, m)
-  })
-  if (!list.length) txt(w, "Nessuna partita", F_TXT, C.sub)
-  w.addSpacer()
+  const res = {}, used = {}
+  for (const n of names) {
+    let a = base(n), k = 2
+    while (used[a.toLowerCase()]) { a = base(n).replace(/\.$/, "").slice(0, MAX - 1) + k; k++ }
+    used[a.toLowerCase()] = true
+    res[n] = a
+  }
+  return res
 }
 
 function resultsMedium(w, d) {
@@ -849,9 +891,7 @@ function lastBlock(stack, t, size, d) {
   sectionLabel(stack, "Ultima")
   if (!m) { txt(stack, "—", size, C.sub); return }
   const r = stack.addStack(); r.centerAlignContent(); r.spacing = 5; r.url = matchUrl(m)
-  const w = won(m)
-  const chip = r.addStack(); chip.setPadding(1, 5, 1, 5); chip.cornerRadius = 5; chip.backgroundColor = w ? C.win : C.lose
-  const ct = chip.addText(`${w ? "V" : "P"} ${homeAway(m)}`); ct.font = Font.boldRoundedSystemFont(size); ct.textColor = Color.white()
+  teamScore(r, m, size)
   logo(r, opp(m), size + 4)
   const o = txt(r, `${isMine(m.home) ? "vs" : "@"} ${opp(m)}`, size, C.text); o.minimumScaleFactor = 0.8
   if (m.parziali.length) txt(stack, m.parziali.map(p => p.join("-")).join(" · "), size - 2, m.ufficioso ? C.uff : C.sub).minimumScaleFactor = 0.75
@@ -957,11 +997,9 @@ function calendarRow(stack, m, stripe, isNext) {
   const o = txt(r, opp(m), 11, C.text); o.minimumScaleFactor = 0.85
   r.addSpacer()
   if (m.sets) {
-    const wn = won(m)
-    const chip = r.addStack(); chip.size = new Size(44, 0); chip.cornerRadius = 5; chip.setPadding(1, 0, 1, 0)
-    chip.backgroundColor = wn ? C.win : C.lose; chip.centerAlignContent()
-    const ct = chip.addText(`${wn ? "V" : "P"} ${homeAway(m)}`); ct.font = Font.boldRoundedSystemFont(10); ct.textColor = Color.white()
-  } else cell(r, fmtTime(m.ts), 44, Font.mediumSystemFont(10), C.text, "center")
+    const box = r.addStack(); box.size = new Size(50, 0); box.addSpacer()
+    teamScore(box, m, 10)
+  } else cell(r, fmtTime(m.ts), 50, Font.mediumSystemFont(10), C.text, "center")
 }
 
 function noTeamWidget(w) {
@@ -1008,9 +1046,7 @@ function panoramaLarge(w, d) {
     sectionLabel(r, "Ultima")
     if (m) {
       const lr = r.addStack(); lr.centerAlignContent(); lr.spacing = 5; lr.url = matchUrl(m)
-      const wn = won(m)
-      const chip = lr.addStack(); chip.setPadding(1, 5, 1, 5); chip.cornerRadius = 5; chip.backgroundColor = wn ? C.win : C.lose
-      const ct = chip.addText(`${wn ? "V" : "P"} ${homeAway(m)}`); ct.font = Font.boldRoundedSystemFont(F_TXT); ct.textColor = Color.white()
+      teamScore(lr, m, F_TXT)
       logo(lr, opp(m), 13)
       const o = txt(lr, `${isMine(m.home) ? "vs" : "@"} ${opp(m)}`, F_TXT, C.text, "semibold"); o.minimumScaleFactor = 0.75
     } else txt(r, "—", F_TXT, C.sub)
@@ -1072,7 +1108,7 @@ function panoramaLarge(w, d) {
 // ── panoramica piccola: la squadra, chi le sta sopra e sotto in classifica, la prossima partita ──
 function panoramaSmall(w, d) {
   const t = teamData(d)
-  smallTeamTop(w, d, t, t.last)
+  smallTeamTop(w, d, t)
   w.addSpacer()
   if (t.me && d.standings.length > 2) {
     const s = d.standings, i = s.indexOf(t.me)
@@ -1082,7 +1118,8 @@ function panoramaSmall(w, d) {
     const ns = rowNameSize(rows, INNER_SMALL)
     for (const x of rows) panoStandingRow(col, x, ns)
     w.addSpacer()
-  } else if (t.last) { lastRow(w, t.last, false); w.addSpacer() }
+  }
+  if (t.last) { lastRow(w, t.last, false); w.addSpacer() }
   if (t.next) nextLines(w, t.next)
   else txt(w, "Nessuna in calendario", F_SUB, C.sub)
 }
@@ -1130,8 +1167,9 @@ function panoramaMedium(w, d) {
 
   // a sinistra: la squadra (come nel piccolo) e la prossima partita
   const l = row.addStack(); l.layoutVertically(); l.size = new Size(leftW, 0)
-  smallTeamTop(l, d, t, t.last)
-  l.addSpacer(12)
+  smallTeamTop(l, d, t)
+  l.addSpacer(8)
+  if (t.last) { lastRow(l, t.last, false); l.addSpacer(8) }
   if (t.next) { nextLines(l, t.next); venueLine(l, d, t.next) }
   else txt(l, "Nessuna in calendario", F_SUB, C.sub)
 
@@ -1159,11 +1197,27 @@ function venueLine(stack, d, m) {
 }
 
 // Risultato dell'ultima partita: V/P e set, verde o rosso
-function lastChip(stack, m) {
+function lastChip(stack, m) { return teamScore(stack, m, F_TXT) }
+
+// Risultato della squadra seguita: bollino V (verde) o P (rossa) e punteggio sempre casa-ospite,
+// con il numero della squadra in grassetto e colorato e quello dell'avversario in grigio.
+// Se il risultato non è ancora ufficiale i numeri sono rossi, come sul sito.
+function teamScore(stack, m, size) {
   const wn = won(m)
-  const chip = stack.addStack(); chip.setPadding(1, 5, 1, 5); chip.cornerRadius = 5; chip.backgroundColor = wn ? C.win : C.lose
-  const ct = chip.addText(`${wn ? "V" : "P"} ${homeAway(m)}`); ct.font = Font.boldRoundedSystemFont(F_SUB); ct.textColor = Color.white()
-  return chip
+  const g = stack.addStack(); g.centerAlignContent(); g.spacing = 4
+  const chip = g.addStack(); chip.setPadding(1, 4, 1, 4); chip.cornerRadius = 4; chip.backgroundColor = wn ? C.win : C.lose
+  const ct = chip.addText(wn ? "V" : "P"); ct.font = Font.boldRoundedSystemFont(size - 1); ct.textColor = Color.white()
+  const sc = g.addStack(); sc.centerAlignContent(); sc.spacing = 1
+  const mineHome = isMine(m.home)
+  const num = (v, mine) => {
+    const t = sc.addText(String(v))
+    t.font = mine ? Font.boldRoundedSystemFont(size + 0.5) : Font.mediumRoundedSystemFont(size)
+    t.textColor = m.ufficioso ? C.uff : mine ? C.hlText : C.sub
+  }
+  num(m.sets[0], mineHome)
+  const dash = sc.addText("-"); dash.font = Font.mediumRoundedSystemFont(size); dash.textColor = m.ufficioso ? C.uff : C.sub
+  num(m.sets[1], !mineHome)
+  return g
 }
 
 // Grandezza dei nomi in una lista di classifica: 10,5 se ci stanno, altrimenti un po' meno,
@@ -1460,7 +1514,7 @@ function header(w, d, subtitle, compact) {
     txt(tt, subtitle, 12, C.text, "bold")
     const g = txt(tt, d.title, F_SUB, C.sub, "semibold"); g.lineLimit = 1
     h.addSpacer()
-    return
+    return h
   }
   const t = txt(tt, d.title, 13, C.text, "bold"); t.minimumScaleFactor = 0.6
   const s = txt(tt, subtitle, 10, C.sub, "semibold"); s.minimumScaleFactor = 0.7
