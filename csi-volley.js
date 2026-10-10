@@ -445,8 +445,7 @@ function standingsSmall(w, d) {
   const avail = WIDE * 0.467 - 58 // altezza utile del piccolo (quadrato)
   const col = w.addStack(); col.layoutVertically()
   col.spacing = Math.max(2, Math.min(10, (avail - rows.length * 16) / Math.max(1, rows.length - 1)))
-  const ns = Math.min(F_TXT, fitNames(rows, INNER_SMALL, F_TXT, 13))
-  for (const s of rows) panoStandingRow(col, s, ns, INNER_SMALL)
+  for (const s of rows) panoStandingRow(col, s, F_TXT)
   w.addSpacer()
 }
 
@@ -1057,16 +1056,14 @@ function panoramaLarge(w, d) {
 // ── panoramica piccola: la squadra, chi le sta sopra e sotto in classifica, la prossima partita ──
 function panoramaSmall(w, d) {
   const t = teamData(d)
-  const top = smallTeamTop(w, d, t)
-  if (t.last) lastChip(top, t.last)
+  smallTeamTop(w, d, t, t.last)
   w.addSpacer()
   if (t.me && d.standings.length > 2) {
     const s = d.standings, i = s.indexOf(t.me)
     const from = Math.max(0, Math.min(i - 1, s.length - 3))
     const rows = s.slice(from, from + 3)
-    const ns = Math.min(F_TXT, fitNames(rows, INNER_SMALL, F_TXT, 13))
     const col = w.addStack(); col.layoutVertically(); col.spacing = 2
-    for (const x of rows) panoStandingRow(col, x, ns, INNER_SMALL)
+    for (const x of rows) panoStandingRow(col, x, F_TXT)
     w.addSpacer()
   } else if (t.last) { lastRow(w, t.last, false); w.addSpacer() }
   if (t.next) nextLines(w, t.next)
@@ -1074,7 +1071,7 @@ function panoramaSmall(w, d) {
 }
 
 // Intestazione dei piccoli di squadra: logo, nome, posizione e punti, orario a destra
-function smallTeamTop(w, d, t) {
+function smallTeamTop(w, d, t, chipMatch) {
   const top = w.addStack(); top.centerAlignContent(); top.spacing = 7
   logo(top, TEAM, 26)
   const nm = top.addStack(); nm.layoutVertically()
@@ -1084,6 +1081,7 @@ function smallTeamTop(w, d, t) {
     txt(p, `${t.me.pos}°`, F_SUB, C.hlText, "bold")
     txt(p, `· ${t.me.pt} pt`, F_SUB, C.sub, "semibold")
   }
+  if (chipMatch) { p.addSpacer(4); lastChip(p, chipMatch) }
   top.addSpacer()
   return top
 }
