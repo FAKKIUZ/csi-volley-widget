@@ -12,6 +12,8 @@ Progetto amatoriale, non ufficiale e non collegato al Centro Sportivo Italiano.
 5. Sulla Home tieni premuto su uno spazio vuoto → **Modifica → Aggiungi widget** → **Scriptable**
    e scegli la dimensione.
 6. Tieni premuto sul widget → **Modifica widget** → **Script** → **CSI Volley**.
+   Alla voce **When Interacting** puoi lasciare quello che vuoi (va bene anche **Run Script**):
+   cosa succede al tocco lo decide già il widget (vedi *Da sapere*).
 
 Così com'è, il widget mostra il girone Libere D di Bergamo con la squadra Volley 2c evidenziata.
 
@@ -55,9 +57,24 @@ La **panoramica** cambia con la dimensione del widget:
 Nel Parameter si possono aggiungere, separati da una **virgola**, un'altra squadra o un altro girone solo
 per quel widget: `risultati, Pcq 1971` oppure *link del girone*`, Nome squadra`.
 
+## Seguire più squadre o più gironi
+Ci sono due modi:
+
+1. **Dal Parameter del widget** (lo script resta uno solo): nel widget della seconda squadra scrivi
+   la vista, il link del girone e il nome della squadra, separati da virgole:
+   `panoramica, https://live.centrosportivoitaliano.it/..., Nome squadra`
+2. **Duplicando lo script**: in Scriptable crea un secondo script (per esempio **CSI Volley 2**),
+   incollaci lo stesso `CSI Volley.js` e in cima cambia `squadra` e `girone`. Nei widget scegli poi
+   lo script giusto, e il Parameter resta corto (`panoramica`, `classifica`…). Anche Siri si imposta
+   separatamente per ogni script.
+   Il calendario scelto è **uno solo per tutti gli script**: nel secondo script metti
+   `calendario: false`, altrimenti le sue partite finiscono nello stesso calendario del primo.
+
 ## Da sapere
-- Tocca una partita per aprirne la scheda, e la palestra per avere il percorso nell'app di navigazione
-  predefinita (su iPhone: Impostazioni → App → App predefinite → Navigazione).
+- Toccando il widget si apre la pagina del girone sul sito CSI. Nei widget medio e grande, toccando una
+  partita se ne apre la scheda, e toccando la palestra il percorso nell'app di navigazione predefinita
+  (su iPhone: Impostazioni → App → App predefinite → Navigazione). Nel piccolo iOS permette un solo tocco:
+  apre sempre la pagina del girone.
 - I risultati in **rosso** non sono ancora ufficiali, come sul sito.
 - Se il sito CSI non risponde, il widget mostra i dati salvati e in fondo compare in rosso
   **⚠︎ dati delle…** con l'orario dell'ultimo aggiornamento riuscito.
