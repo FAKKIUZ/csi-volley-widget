@@ -1096,7 +1096,7 @@ function panoramaLarge(w, d) {
     box.size = new Size(LRG.w, 0)
     box.setPadding(8, 10, 8, 10); box.cornerRadius = 12; box.backgroundColor = C.stripe
     // colonna sinistra larga quanto serve (logo, nome, forma): il resto va a ultima e prossima
-    const leftW = 112, rightW = LRG.w - 20 - leftW - 23
+    const leftW = 112, rightW = LRG.w - 20 - leftW - 23 - 2 // 2 punti di tolleranza
     const l = box.addStack(); l.layoutVertically(); l.spacing = 6; l.size = new Size(leftW, 0)
     const top = l.addStack(); top.centerAlignContent(); top.spacing = 8
     const ring = top.addStack(); ring.size = new Size(38, 38); ring.cornerRadius = 19
@@ -1145,7 +1145,8 @@ function panoramaLarge(w, d) {
         const vt = txt(vs, textW(full, F_SUB) <= free ? full : city, F_SUB, C.sub); vt.minimumScaleFactor = 0.85
       }
     } else txt(r, "Nessuna in calendario", F_TXT, C.sub)
-    box.addSpacer()
+    // niente spaziatore finale: le colonne riempiono già la scheda, e lo spaziatore in più (11 + ~8 punti)
+    // la faceva sforare, così iOS spostava tutto a sinistra mangiando il margine
     avail -= 90
   }
 
