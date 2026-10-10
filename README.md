@@ -59,7 +59,8 @@ per quel widget: `risultati, Pcq 1971` oppure *link del girone*`, Nome squadra`.
 - Tocca una partita per aprirne la scheda, e la palestra per avere il percorso nell'app di navigazione
   predefinita (su iPhone: Impostazioni → App → App predefinite → Navigazione).
 - I risultati in **rosso** non sono ancora ufficiali, come sul sito.
-- Il triangolino ⚠︎ accanto all'orario vuol dire che il sito CSI non ha risposto e il widget mostra i dati salvati.
+- In fondo a ogni widget c'è l'orario dell'ultimo aggiornamento. Se compare in rosso con ⚠︎ ("Dati delle…"),
+  il sito CSI non ha risposto e il widget mostra i dati salvati.
 - **Calendario**: dal menu dello script (tocca ▶︎) scegli **Aggiorna Calendario** e il calendario dove mettere
   le partite. Da lì in poi si aggiorna da solo insieme ai widget.
 - **Siri**: nelle impostazioni dello script usa **Add to Siri**: Siri dirà posizione, ultimo risultato e prossima partita.
