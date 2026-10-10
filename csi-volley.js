@@ -1089,7 +1089,7 @@ function smallTeamTop(w, d, t, chipMatch) {
   const top = w.addStack(); top.centerAlignContent(); top.spacing = 7
   logo(top, TEAM, 26)
   const nm = top.addStack(); nm.layoutVertically()
-  const n = txt(nm, TEAM, 12, C.text, "bold"); n.minimumScaleFactor = 0.85
+  txt(nm, TEAM, 12, C.text, "bold")
   const p = nm.addStack(); p.centerAlignContent(); p.spacing = 3
   if (t.me) {
     txt(p, `${t.me.pos}°`, F_SUB, C.hlText, "bold")
@@ -1171,7 +1171,7 @@ function panoStandingRow(stack, s, nameSize, width) {
   cell(r, s.pos, 16, Font.semiboldRoundedSystemFont(F_SUB), s.pos === 1 ? C.accent : C.sub, "center", true)
   if (TREND) trend(r, s, F_SUB)
   logo(r, s.name, 13)
-  const n = txt(r, s.name, nameSize, mine ? C.hlText : C.text, mine ? "bold" : "regular"); n.minimumScaleFactor = 0.85
+  txt(r, s.name, nameSize, mine ? C.hlText : C.text, mine ? "bold" : "regular")
   r.addSpacer()
   cell(r, s.pt, 18, ptsFont(s, F_TXT), ptsColor(s), "center")
 }
@@ -1445,8 +1445,9 @@ function header(w, d, subtitle, compact) {
   if (img) { const i = ic.addImage(img); i.imageSize = new Size(15, 15); i.tintColor = Color.white() }
   const tt = h.addStack(); tt.layoutVertically()
   if (compact) {
-    const t = txt(tt, d.title, 12, C.text, "bold"); t.minimumScaleFactor = 0.85
-    const s = txt(tt, subtitle, F_SUB, C.sub, "semibold"); s.minimumScaleFactor = 0.85
+    // dimensioni fisse: iOS non deve rimpicciolirle, altrimenti cambiano da un widget all'altro
+    txt(tt, d.title, 12, C.text, "bold")
+    txt(tt, subtitle, F_SUB, C.sub, "semibold")
     h.addSpacer()
     return
   }
