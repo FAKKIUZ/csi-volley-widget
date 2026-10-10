@@ -1091,12 +1091,14 @@ function panoramaLarge(w, d) {
   // ── scheda squadra: a sinistra posizione e forma, a destra ultima e prossima ──
   if (TEAM && (t.me || t.last || t.next)) {
     w.addSpacer()
-    // due colonne compatte allineate in alto, ciascuna alta quanto il suo contenuto
-    const box = w.addStack(); box.topAlignContent(); box.spacing = 11
+    // due colonne compatte, centrate in verticale: lo spazio libero si divide sopra e sotto
+    const box = w.addStack(); box.centerAlignContent(); box.spacing = 0
     box.size = new Size(LRG.w, 0)
     box.setPadding(8, 10, 8, 10); box.cornerRadius = 12; box.backgroundColor = C.stripe
-    // colonna sinistra larga quanto serve (logo, nome, forma): il resto va a ultima e prossima
-    const leftW = 112, rightW = LRG.w - 20 - leftW - 23 - 2 // 2 punti di tolleranza
+    // colonna sinistra larga quanto serve (logo, nome, forma): il resto va a ultima e prossima.
+    // La linea sta a metà strada tra il contenuto a sinistra e quello a destra (gapL prima, gapR dopo)
+    const leftW = 100, gapL = 12, gapR = 20
+    const rightW = LRG.w - 20 - leftW - gapL - 1 - gapR - 2 // 2 punti di tolleranza
     const l = box.addStack(); l.layoutVertically(); l.spacing = 6; l.size = new Size(leftW, 0)
     const top = l.addStack(); top.centerAlignContent(); top.spacing = 8
     const ring = top.addStack(); ring.size = new Size(38, 38); ring.cornerRadius = 19
@@ -1111,9 +1113,10 @@ function panoramaLarge(w, d) {
     }
     const dr = l.addStack(); dotsOnly(dr, t.form, 9); dr.addSpacer()
 
-    // linea divisoria un po' più corta della colonna destra, centrata rispetto al suo contenuto
-    const sw = box.addStack(); sw.layoutVertically(); sw.addSpacer(6)
-    const sep = sw.addStack(); sep.size = new Size(1, 60); sep.backgroundColor = C.chip
+    // linea divisoria un po' più corta della colonna destra, centrata in verticale
+    box.addSpacer(gapL)
+    const sep = box.addStack(); sep.size = new Size(1, 60); sep.backgroundColor = C.chip
+    box.addSpacer(gapR)
 
     const r = box.addStack(); r.layoutVertically(); r.spacing = 2; r.size = new Size(rightW, 0)
     const m = t.last
