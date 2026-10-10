@@ -44,12 +44,12 @@ Ogni widget sceglie la sua vista: tieni premuto sul widget → **Modifica widget
 | Cosa vuoi | Cosa scrivi nel Parameter |
 | --- | --- |
 | la classifica | *(niente)* oppure `classifica` |
-| gli ultimi risultati e le prossime partite | `risultati` |
+| i risultati della giornata | `risultati` |
 | la scheda della tua squadra | `squadra` |
 | un po' di tutto | `panoramica` |
 
 La **panoramica** cambia con la dimensione del widget:
-- **piccolo**: posizione, ultimo risultato e prossima partita;
+- **piccolo**: posizione, chi ti sta sopra e sotto in classifica, ultimo risultato e prossima partita;
 - **medio**: la tua squadra con ultima e prossima partita, accanto alla classifica;
 - **grande**: scheda della squadra, giornata in corso e classifica completa.
 
@@ -76,6 +76,9 @@ Ci sono due modi:
   (su iPhone: Impostazioni → App → App predefinite → Navigazione). Nel piccolo iOS permette un solo tocco:
   apre sempre la pagina del girone.
 - I risultati in **rosso** non sono ancora ufficiali, come sul sito.
+- Il risultato della tua squadra si legge così: bollino **V** (vittoria, verde) o **P** (sconfitta, rossa),
+  poi il punteggio sempre in ordine casa-ospite con il **vostro numero in grassetto e colorato**.
+  `@` vuol dire che avete giocato fuori casa, `vs` in casa.
 - Se il sito CSI non risponde, il widget mostra i dati salvati e in fondo compare in rosso
   **⚠︎ dati delle…** con l'orario dell'ultimo aggiornamento riuscito.
 - **Calendario**: dal menu dello script (tocca ▶︎) scegli **Aggiorna Calendario** e il calendario dove mettere
