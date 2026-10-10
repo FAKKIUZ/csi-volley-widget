@@ -48,6 +48,8 @@ const WIDE = Math.round(Math.min(SCREEN.width, SCREEN.height) * 0.89) // larghez
 const PAD = 14
 const INNER = WIDE - PAD * 2
 const INNER_SMALL = Math.round(WIDE * 0.467) - PAD * 2
+// scala dei caratteri della panoramica: testi 10,5 · dettagli 10 · etichette 9 (sectionLabel)
+const F_TXT = 10.5, F_SUB = 10
 let LOGOS = {}
 let TREND = null // posizioni a fine giornata precedente, per le frecce
 
@@ -1001,11 +1003,11 @@ function panoramaLarge(w, d) {
     ring.borderColor = C.accent; ring.borderWidth = 2; ring.centerAlignContent()
     logo(ring, TEAM, 27)
     const nm = top.addStack(); nm.layoutVertically(); nm.spacing = 0
-    const n = txt(nm, TEAM, 12.5, C.text, "bold"); n.minimumScaleFactor = 0.7
+    const n = txt(nm, TEAM, 13, C.text, "bold"); n.minimumScaleFactor = 0.7
     if (t.me) {
       const p = nm.addStack(); p.bottomAlignContent(); p.spacing = 4
       txt(p, `${t.me.pos}°`, 16, C.hlText, "bold")
-      txt(p, `${t.me.pt} pt`, 11, C.text, "semibold")
+      txt(p, `${t.me.pt} pt`, F_TXT, C.sub, "semibold")
     }
     const dr = l.addStack(); dotsOnly(dr, t.form, 9); dr.addSpacer()
 
@@ -1018,27 +1020,27 @@ function panoramaLarge(w, d) {
       const lr = r.addStack(); lr.centerAlignContent(); lr.spacing = 5; lr.url = matchUrl(m)
       const wn = won(m)
       const chip = lr.addStack(); chip.setPadding(1, 5, 1, 5); chip.cornerRadius = 5; chip.backgroundColor = wn ? C.win : C.lose
-      const ct = chip.addText(`${wn ? "V" : "P"} ${homeAway(m)}`); ct.font = Font.boldRoundedSystemFont(10); ct.textColor = Color.white()
+      const ct = chip.addText(`${wn ? "V" : "P"} ${homeAway(m)}`); ct.font = Font.boldRoundedSystemFont(F_TXT); ct.textColor = Color.white()
       logo(lr, opp(m), 13)
-      const o = txt(lr, `${isMine(m.home) ? "vs" : "@"} ${opp(m)}`, 10.5, C.text); o.minimumScaleFactor = 0.75
-    } else txt(r, "—", 10.5, C.sub)
+      const o = txt(lr, `${isMine(m.home) ? "vs" : "@"} ${opp(m)}`, F_TXT, C.text, "semibold"); o.minimumScaleFactor = 0.75
+    } else txt(r, "—", F_TXT, C.sub)
     r.addSpacer(4)
     const nx = t.next
     sectionLabel(r, nx ? `Prossima · ${countdown(nx.ts)}` : "Prossima")
     if (nx) {
       const nr = r.addStack(); nr.centerAlignContent(); nr.spacing = 5; nr.url = matchUrl(nx)
       logo(nr, opp(nx), 13)
-      const o = txt(nr, `${isMine(nx.home) ? "vs" : "@"} ${opp(nx)}`, 10.5, C.text, "semibold"); o.minimumScaleFactor = 0.75
+      const o = txt(nr, `${isMine(nx.home) ? "vs" : "@"} ${opp(nx)}`, F_TXT, C.text, "semibold"); o.minimumScaleFactor = 0.75
       const when = r.addStack(); when.centerAlignContent(); when.spacing = 4
-      txt(when, `${dayName(nx.ts)} ${fmtDate(nx.ts)} · ${fmtTime(nx.ts)}`, 9.5, C.sub)
+      txt(when, `${dayName(nx.ts)} ${fmtDate(nx.ts)} · ${fmtTime(nx.ts)}`, F_SUB, C.sub)
       const v = venueOf(d, nx)
       if (v) {
         const vs = when.addStack(); vs.centerAlignContent(); vs.spacing = 2; vs.url = mapsUrl(v)
-        const pin = symbol("mappin.circle.fill", 9)
-        if (pin) { const i = vs.addImage(pin); i.imageSize = new Size(10, 10); i.tintColor = C.accent }
-        const vt = txt(vs, venueCity(v) || venueName(v), 9.5, C.sub); vt.minimumScaleFactor = 0.7
+        const pin = symbol("mappin.circle.fill", F_SUB)
+        if (pin) { const i = vs.addImage(pin); i.imageSize = new Size(F_SUB, F_SUB); i.tintColor = C.accent }
+        const vt = txt(vs, venueCity(v) || venueName(v), F_SUB, C.sub); vt.minimumScaleFactor = 0.9
       }
-    } else txt(r, "Nessuna in calendario", 10.5, C.sub)
+    } else txt(r, "Nessuna in calendario", F_TXT, C.sub)
     box.addSpacer()
     avail -= 80
   }
@@ -1056,8 +1058,9 @@ function panoramaLarge(w, d) {
     const fit = Math.max(2, Math.floor((free + 2) / 21))
     const ms = g.cur.matches.slice(0, fit)
     const list = w.addStack(); list.layoutVertically(); list.spacing = 2
-    const lay = rowLayout(ms, INNER, 10)
-    ms.forEach(m => matchRow(list, m, INNER, 10, false, true, lay))
+    const lay = rowLayout(ms, INNER, F_TXT)
+    lay.nameSize = Math.min(lay.nameSize, F_TXT)
+    ms.forEach(m => matchRow(list, m, INNER, F_TXT, false, true, lay))
   }
 
   if (st.length) {
@@ -1066,13 +1069,26 @@ function panoramaLarge(w, d) {
     w.addSpacer(4)
     const row = w.addStack(); row.topAlignContent(); row.spacing = 12
     const colW = (INNER - 12) / 2
-    const nameSize = Math.min(10.5, fitNames(st, colW, 10, 13) + 0.5)
+    const nameSize = Math.min(F_TXT, fitNames(st, colW, F_TXT, 13))
     for (const part of [st.slice(0, per), st.slice(per)]) {
       const c = row.addStack(); c.layoutVertically(); c.spacing = 2
-      for (const x of part) standingRowCompact(c, x, colW, 10, 13, nameSize)
+      for (const x of part) panoStandingRow(c, x, nameSize)
     }
   }
   w.addSpacer()
+}
+
+// Riga di classifica della panoramica: posizione, logo, nome e punti con la stessa scala di caratteri
+function panoStandingRow(stack, s, nameSize) {
+  const r = stack.addStack(); r.centerAlignContent(); r.spacing = 4; r.setPadding(0, 2, 0, 4)
+  const mine = isMine(s.name)
+  if (mine) { r.backgroundColor = C.hl; r.cornerRadius = 5 }
+  cell(r, s.pos, 16, Font.semiboldRoundedSystemFont(F_SUB), s.pos === 1 ? C.accent : C.sub, "center", true)
+  if (TREND) trend(r, s, F_SUB)
+  logo(r, s.name, 13)
+  const n = txt(r, s.name, nameSize, mine ? C.hlText : C.text, mine ? "bold" : "regular"); n.minimumScaleFactor = 0.85
+  r.addSpacer()
+  cell(r, s.pt, 18, ptsFont(s, F_TXT), ptsColor(s), "center")
 }
 
 // Solo i pallini della forma (ultime 5: V verde, P rossa, vuoti da giocare), senza etichetta
