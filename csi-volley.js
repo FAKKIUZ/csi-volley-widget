@@ -57,6 +57,13 @@ const MED = (() => {
     "375x667": [321, 148], "320x568": [292, 141] }[`${sw}x${sh}`] || [Math.round(sw * 0.867), Math.round(sw * 0.405)]
   return { w: t[0] - PAD * 2, h: t[1] - 24 }
 })()
+// Misure reali del widget grande (punti). Riferimento: iPhone 12 Pro, 338×354 → contenuto 310×330.
+// Altri profili si aggiungeranno qui senza toccare quello del 12 Pro.
+const LRG = (() => {
+  const sw = Math.round(Math.min(SCREEN.width, SCREEN.height)), sh = Math.round(Math.max(SCREEN.width, SCREEN.height))
+  const t = { "390x844": [338, 354], "393x852": [338, 354] }[`${sw}x${sh}`] || [WIDE, Math.round(WIDE * 1.05)]
+  return { w: t[0] - PAD * 2, h: t[1] - 24 }
+})()
 // scala dei caratteri della panoramica: testi 10,5 · dettagli 10 · etichette 9 (sectionLabel)
 const F_TXT = 10.5, F_SUB = 10
 let LOGOS = {}
@@ -477,7 +484,7 @@ function standingsMedium(w, d) {
 }
 
 function standingsLarge(w, d) {
-  header(w, d, "Classifica")
+  header(w, d, "Classifica", false, true)
   w.addSpacer(8)
   const rows = d.standings.slice(0, 14)
   standingsTable(w, rows, rows.length > 11 ? 11 : 12, 3)
@@ -643,30 +650,67 @@ function resultsMedium(w, d) {
 
 function resultsLarge(w, d) {
   const g = currentGiornata(d)
-  header(w, d, "Risultati")
-  w.addSpacer(8)
-  let budget = WIDE * 1.05 - 38
+  header(w, d, "Risultati", false, true)
+  w.addSpacer(6)
+  // altezze misurate sul 12 Pro: riga 19 punti, con i parziali 30; 3 tra le righe; etichetta 14
+  const withP = params.parziali !== "no"
+  const rowH = m => (withP && m.parziali.length ? 30 : 19) + 3
+  let budget = LRG.h - 30 - 6
   if (g.cur) {
+    budget -= 14
+    const ms = []
+    for (const m of pickMatches(g.cur.matches, g.cur.matches.length)) { if (budget - rowH(m) < 0) break; budget -= rowH(m); ms.push(m) }
+    const cur = pickMatches(g.cur.matches, ms.length)
     sectionLabel(w, prettyGiornata(g.cur.label))
     w.addSpacer(3)
     const list = w.addStack(); list.layoutVertically(); list.spacing = 3
-    const lay = rowLayout(g.cur.matches, INNER, 11)
-    const withP = params.parziali !== "no"
-    for (const m of g.cur.matches) {
-      matchRow(list, m, INNER, 11, withP, false, lay)
-      budget -= m.parziali.length ? 37 : 25
-    }
-    budget -= 22
+    const lay = rowLayout(cur, LRG.w, 11)
+    cur.forEach(m => matchRow(list, m, LRG.w, 11, withP, true, lay))
   }
-  if (g.next && budget > 45 && params.prossima !== "no") {
-    w.addSpacer(8)
-    sectionLabel(w, prettyGiornata(g.next.label))
-    w.addSpacer(3)
-    const list = w.addStack(); list.layoutVertically(); list.spacing = 3
-    const nx = g.next.matches.slice(0, Math.floor((budget - 22) / 25)), lay = rowLayout(nx, INNER, 11)
-    nx.forEach(m => matchRow(list, m, INNER, 11, true, false, lay))
+  if (g.next && params.prossima !== "no") {
+    budget -= 6 + 14
+    const fit = Math.floor(budget / (19 + 3))
+    if (fit >= 2) {
+      w.addSpacer(6)
+      sectionLabel(w, prettyGiornata(g.next.label))
+      w.addSpacer(3)
+      const list = w.addStack(); list.layoutVertically(); list.spacing = 3
+      const nx = pickMatches(g.next.matches, fit), lay = rowLayout(nx, LRG.w, 11)
+      nx.forEach(m => matchRow(list, m, LRG.w, 11, true, true, lay))
+    }
   }
   w.addSpacer()
+}
+
+// Le prime n partite della lista, ma quella della squadra seguita non resta mai fuori:
+// se non rientra tra le prime n prende il posto dell'ultima (l'ordine resta quello del sito)
+function pickMatches(list, n) {
+  if (list.length <= n) return list.slice()
+  const out = list.slice(0, n)
+  const mine = list.find(isMyMatch)
+  if (n > 0 && mine && !out.includes(mine)) {
+    out[n - 1] = mine
+    out.sort((a, b) => list.indexOf(a) - list.indexOf(b))
+  }
+  return out
+}
+
+// Larghezza stimata di un testo (punti), per decidere se entra prima di disegnarlo
+function textW(str, size) { return String(str).length * size * 0.55 }
+
+// Riga di classifica a due colonne del grande: colonnine di posizione e punti un po' più strette,
+// così i nomi lunghi (es. "Montello Thunders") entrano interi alla grandezza normale
+function largeStandingRow(stack, s, width) {
+  const r = stack.addStack(); r.centerAlignContent(); r.spacing = 4; r.setPadding(0, 2, 0, 2)
+  r.size = new Size(width, 0)
+  const mine = isMine(s.name)
+  if (mine) { r.backgroundColor = C.hl; r.cornerRadius = 5 }
+  cell(r, s.pos, 14, Font.semiboldRoundedSystemFont(F_SUB), s.pos === 1 ? C.accent : C.sub, "center", true)
+  if (TREND) trend(r, s, F_SUB)
+  logo(r, s.name, 13)
+  const n = txt(r, s.name, F_TXT, mine ? C.hlText : C.text, mine ? "bold" : "regular"); n.minimumScaleFactor = 0.9
+  r.addSpacer()
+  cell(r, s.pt, 16, ptsFont(s, F_TXT), ptsColor(s), "center")
 }
 
 // Partita su una riga: Casa [logo] [punteggio] [logo] Ospite (+ parziali sotto)
@@ -989,10 +1033,10 @@ function teamMedium(w, d) {
 
 function teamLarge(w, d) {
   const t = teamData(d)
-  header(w, d, "La mia squadra")
+  header(w, d, "La mia squadra", false, true)
   w.addSpacer(10)
   const row = w.addStack(); row.topAlignContent(); row.spacing = 12
-  const leftW = Math.round(INNER * 0.47)
+  const leftW = Math.round(LRG.w * 0.47)
   teamCard(row, d, t, 40, leftW)
   const r = row.addStack(); r.layoutVertically(); r.spacing = 2
   lastBlock(r, t, 11)
@@ -1002,8 +1046,8 @@ function teamLarge(w, d) {
   sectionLabel(w, "Calendario")
   w.addSpacer(3)
   const list = w.addStack(); list.layoutVertically(); list.spacing = 2
-  // altezza del grande ≈ 1,05 × larghezza: le righe del calendario sono quante ne entrano
-  const n = Math.max(3, Math.min(8, Math.floor((WIDE * 1.05 - 222) / 24)))
+  // righe del calendario: quante ne entrano sotto la scheda (~194 punti), ~23 punti l'una
+  const n = Math.max(3, Math.min(8, Math.floor((LRG.h - 194) / 23)))
   const past = Math.min(t.pl.length, t.up.length ? 2 : n)
   const cal = t.pl.slice(0, past).reverse().concat(t.up).slice(0, n)
   cal.forEach((m, i) => calendarRow(list, m, i % 2 === 0, t.next && m.code === t.next.code))
@@ -1012,7 +1056,7 @@ function teamLarge(w, d) {
 
 function calendarRow(stack, m, stripe, isNext) {
   const r = stack.addStack(); r.centerAlignContent(); r.spacing = 6
-  r.setPadding(3, 6, 3, 6); r.cornerRadius = 6; r.url = matchUrl(m)
+  r.setPadding(3, 6, 3, 6); r.cornerRadius = 7; r.url = matchUrl(m)
   r.backgroundColor = isNext ? C.hl : (stripe ? C.stripe : C.bg)
   cell(r, `${dayName(m.ts)} ${fmtDate(m.ts)}`, 62, Font.systemFont(10), C.sub, "left")
   cell(r, isMine(m.home) ? "casa" : "fuori", 30, Font.mediumSystemFont(9), C.sub, "center")
@@ -1039,16 +1083,18 @@ function noTeamWidget(w) {
 function panoramaLarge(w, d) {
   const t = teamData(d)
   const g = currentGiornata(d)
-  header(w, d, "Panoramica")
-  let avail = WIDE * 1.05 - 24 - 30 // altezza utile del grande, tolta l'intestazione
+  header(w, d, "Panoramica", false, true)
+  let avail = LRG.h - 30 // altezza utile del grande, tolta l'intestazione
 
   // ── scheda squadra: a sinistra posizione e forma, a destra ultima e prossima ──
   if (TEAM && (t.me || t.last || t.next)) {
     w.addSpacer()
     const box = w.addStack(); box.centerAlignContent(); box.spacing = 10
-    box.size = new Size(INNER, 0)
-    box.setPadding(6, 10, 6, 10); box.cornerRadius = 12; box.backgroundColor = C.stripe
-    const l = box.addStack(); l.layoutVertically(); l.spacing = 4
+    box.size = new Size(LRG.w, 0)
+    box.setPadding(6, 8, 6, 8); box.cornerRadius = 12; box.backgroundColor = C.stripe
+    // colonna sinistra stretta quanto serve (logo, nome, forma): il resto va a ultima e prossima
+    const leftW = 104, rightW = LRG.w - 16 - leftW - 21
+    const l = box.addStack(); l.layoutVertically(); l.spacing = 4; l.size = new Size(leftW, 0)
     const top = l.addStack(); top.centerAlignContent(); top.spacing = 7
     const ring = top.addStack(); ring.size = new Size(34, 34); ring.cornerRadius = 17
     ring.borderColor = C.accent; ring.borderWidth = 2; ring.centerAlignContent()
@@ -1064,7 +1110,7 @@ function panoramaLarge(w, d) {
 
     const sep = box.addStack(); sep.size = new Size(1, 50); sep.backgroundColor = C.chip
 
-    const r = box.addStack(); r.layoutVertically(); r.spacing = 1
+    const r = box.addStack(); r.layoutVertically(); r.spacing = 1; r.size = new Size(rightW, 0)
     const m = t.last
     sectionLabel(r, "Ultima")
     if (m) {
@@ -1081,18 +1127,21 @@ function panoramaLarge(w, d) {
       logo(nr, opp(nx), 13)
       const o = txt(nr, `${isMine(nx.home) ? "vs" : "@"} ${opp(nx)}`, F_TXT, C.text, "semibold"); o.minimumScaleFactor = 0.75
       const when = r.addStack(); when.centerAlignContent(); when.spacing = 4
-      const dt = txt(when, `${dayName(nx.ts)} ${fmtDate(nx.ts)} · ${fmtTime(nx.ts)}`, F_SUB, C.sub); dt.minimumScaleFactor = 1
+      const dateStr = `${dayName(nx.ts)} ${fmtDate(nx.ts)} · ${fmtTime(nx.ts)}`
+      const dt = txt(when, dateStr, F_SUB, C.sub); dt.minimumScaleFactor = 1
       const v = venueOf(d, nx)
       if (v) {
         const vs = when.addStack(); vs.centerAlignContent(); vs.spacing = 2; vs.url = mapsUrl(v)
         const pin = symbol("mappin.circle.fill", F_SUB)
         if (pin) { const i = vs.addImage(pin); i.imageSize = new Size(F_SUB, F_SUB); i.tintColor = C.accent }
-        // se lo spazio non basta si rimpicciolisce il paese, mai data e ora
-        const vt = txt(vs, venueCity(v) || venueName(v), F_SUB, C.sub); vt.minimumScaleFactor = 0.75
+        // palestra completa se entra accanto a data e ora, altrimenti solo il paese (data e ora restano intere)
+        const full = venueShort(v), city = venueCity(v) || venueName(v)
+        const free = rightW - textW(dateStr, F_SUB) - 4 - F_SUB - 2
+        const vt = txt(vs, textW(full, F_SUB) <= free ? full : city, F_SUB, C.sub); vt.minimumScaleFactor = 0.85
       }
     } else txt(r, "Nessuna in calendario", F_TXT, C.sub)
     box.addSpacer()
-    avail -= 80
+    avail -= 82
   }
 
   // ── classifica in due colonne: se ne calcola l'altezza per lasciare il resto alla giornata ──
@@ -1106,11 +1155,11 @@ function panoramaLarge(w, d) {
     w.addSpacer(4)
     const free = avail - standH - 16
     const fit = Math.max(2, Math.floor((free + 2) / 21))
-    const ms = g.cur.matches.slice(0, fit)
+    const ms = pickMatches(g.cur.matches, fit)
     const list = w.addStack(); list.layoutVertically(); list.spacing = 2
-    const lay = rowLayout(ms, INNER, F_TXT)
+    const lay = rowLayout(ms, LRG.w, F_TXT)
     lay.nameSize = Math.min(lay.nameSize, F_TXT)
-    ms.forEach(m => matchRow(list, m, INNER, F_TXT, false, true, lay))
+    ms.forEach(m => matchRow(list, m, LRG.w, F_TXT, false, true, lay))
   }
 
   if (st.length) {
@@ -1118,11 +1167,10 @@ function panoramaLarge(w, d) {
     sectionLabel(w, "Classifica")
     w.addSpacer(4)
     const row = w.addStack(); row.topAlignContent(); row.spacing = 12
-    const colW = (INNER - 12) / 2
-    const nameSize = Math.min(F_TXT, fitNames(st, colW, F_TXT, 13))
+    const colW = (LRG.w - 12) / 2
     for (const part of [st.slice(0, per), st.slice(per)]) {
       const c = row.addStack(); c.layoutVertically(); c.spacing = 2
-      for (const x of part) panoStandingRow(c, x, nameSize, colW)
+      for (const x of part) largeStandingRow(c, x, colW)
     }
   }
   w.addSpacer()
@@ -1530,7 +1578,7 @@ ${h2h}
 
 // ───────────────────────── blocchi grafici ─────────────────────────
 
-function header(w, d, subtitle, compact) {
+function header(w, d, subtitle, compact, fixed) {
   const h = w.addStack(); h.centerAlignContent(); h.spacing = 7
   const ic = h.addStack(); ic.size = new Size(26, 26); ic.cornerRadius = 13
   ic.backgroundColor = C.accent; ic.centerAlignContent()
@@ -1544,9 +1592,10 @@ function header(w, d, subtitle, compact) {
     h.addSpacer()
     return h
   }
-  const t = txt(tt, d.title, 13, C.text, "bold"); t.minimumScaleFactor = 0.6
-  const s = txt(tt, subtitle, 10, C.sub, "semibold"); s.minimumScaleFactor = 0.7
+  const t = txt(tt, d.title, 13, C.text, "bold"); t.minimumScaleFactor = fixed ? 1 : 0.6
+  const s = txt(tt, subtitle, 10, C.sub, "semibold"); s.minimumScaleFactor = fixed ? 1 : 0.7
   h.addSpacer()
+  return h
 }
 
 // Piè di pagina: compare solo se il sito CSI non ha risposto e il widget mostra i dati salvati
