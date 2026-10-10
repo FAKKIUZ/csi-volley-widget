@@ -1091,15 +1091,13 @@ function panoramaLarge(w, d) {
   // ── scheda squadra: a sinistra posizione e forma, a destra ultima e prossima ──
   if (TEAM && (t.me || t.last || t.next)) {
     w.addSpacer()
-    // due colonne della stessa altezza H, allineate in alto: in ciascuna il blocco superiore sta in cima
-    // e quello inferiore sul fondo, così stemma ↔ Ultima e forma ↔ Prossima finiscono sulle stesse righe
-    const H = 72
+    // due colonne compatte allineate in alto, ciascuna alta quanto il suo contenuto
     const box = w.addStack(); box.topAlignContent(); box.spacing = 11
     box.size = new Size(LRG.w, 0)
     box.setPadding(8, 10, 8, 10); box.cornerRadius = 12; box.backgroundColor = C.stripe
     // colonna sinistra larga quanto serve (logo, nome, forma): il resto va a ultima e prossima
     const leftW = 112, rightW = LRG.w - 20 - leftW - 23
-    const l = box.addStack(); l.layoutVertically(); l.spacing = 0; l.size = new Size(leftW, H)
+    const l = box.addStack(); l.layoutVertically(); l.spacing = 6; l.size = new Size(leftW, 0)
     const top = l.addStack(); top.centerAlignContent(); top.spacing = 8
     const ring = top.addStack(); ring.size = new Size(38, 38); ring.cornerRadius = 19
     ring.borderColor = C.accent; ring.borderWidth = 2; ring.centerAlignContent()
@@ -1111,13 +1109,13 @@ function panoramaLarge(w, d) {
       txt(p, `${t.me.pos}°`, 16, C.hlText, "bold")
       txt(p, `${t.me.pt} pt`, F_TXT, C.sub, "semibold")
     }
-    l.addSpacer()
     const dr = l.addStack(); dotsOnly(dr, t.form, 9); dr.addSpacer()
 
-    // linea divisoria alta esattamente quanto le due colonne
-    const sep = box.addStack(); sep.size = new Size(1, H); sep.backgroundColor = C.chip
+    // linea divisoria un po' più corta della colonna destra, centrata rispetto al suo contenuto
+    const sw = box.addStack(); sw.layoutVertically(); sw.addSpacer(6)
+    const sep = sw.addStack(); sep.size = new Size(1, 60); sep.backgroundColor = C.chip
 
-    const r = box.addStack(); r.layoutVertically(); r.spacing = 2; r.size = new Size(rightW, H)
+    const r = box.addStack(); r.layoutVertically(); r.spacing = 2; r.size = new Size(rightW, 0)
     const m = t.last
     sectionLabel(r, "Ultima")
     if (m) {
@@ -1126,7 +1124,7 @@ function panoramaLarge(w, d) {
       logo(lr, opp(m), 13)
       const o = txt(lr, `${isMine(m.home) ? "vs" : "@"} ${opp(m)}`, F_TXT, C.text, "semibold"); o.minimumScaleFactor = 0.75
     } else txt(r, "—", F_TXT, C.sub)
-    r.addSpacer() // lo spazio libero va tutto tra Ultima e Prossima
+    r.addSpacer(5) // distanza fissa e moderata tra Ultima e Prossima
     const nx = t.next
     sectionLabel(r, nx ? `Prossima · ${countdown(nx.ts)}` : "Prossima")
     if (nx) {
