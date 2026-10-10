@@ -439,11 +439,7 @@ async function buildWidget(d, family, view) {
 // ── classifica ──
 
 function standingsSmall(w, d) {
-  const h = header(w, d, "Classifica", true)
-  // "PT" in basso a destra dell'intestazione, allineato alla colonna dei punti: niente riga in più
-  const pc = h.addStack(); pc.layoutVertically(); pc.addSpacer()
-  cell(pc, "PT", 18, Font.semiboldSystemFont(9), C.sub, "center")
-  h.addSpacer(4)
+  header(w, d, "Classifica", true)
   w.addSpacer(6)
   const rows = pickStandings(d, 5)
   const avail = WIDE * 0.467 - 58 // altezza utile del piccolo (quadrato)
@@ -565,21 +561,32 @@ function resultsSmall(w, d) {
 // Partita della giornata in una riga: logo, nome breve, punteggio (o data/ora), nome breve, logo.
 // Riga gialla se gioca la squadra seguita, punteggio rosso se non ancora ufficiale.
 function roundRowSmall(stack, m, ab) {
-  const r = stack.addStack(); r.centerAlignContent(); r.spacing = 3; r.setPadding(2, 3, 2, 3); r.cornerRadius = 6
+  const r = stack.addStack(); r.centerAlignContent(); r.spacing = 2; r.setPadding(2, 3, 2, 3); r.cornerRadius = 6
   r.backgroundColor = isMyMatch(m) ? C.hl : C.stripe
   const hw = m.sets && m.sets[0] > m.sets[1], aw = m.sets && m.sets[1] > m.sets[0]
-  const nameFont = (win, mine) => win || mine ? Font.semiboldSystemFont(9.5) : Font.systemFont(9.5)
-  const nameColor = (lose, mine) => mine ? C.hlText : lose ? C.sub : C.text
-  logo(r, m.home, 12)
-  cell(r, ab[m.home] || m.home, "flex", nameFont(hw, isMine(m.home)), nameColor(aw, isMine(m.home)), "left", true)
-  const c = r.addStack(); c.size = new Size(34, 0); c.centerAlignContent(); c.cornerRadius = 4; c.setPadding(1, 0, 1, 0)
+  // i due lati hanno la stessa larghezza fissa, così il punteggio resta sempre centrato
+  const CHIP = 30, SIDE = Math.floor((INNER_SMALL - 6 - CHIP - 4) / 2)
+  const side = (name, win, lose, isHome) => {
+    const sd = r.addStack(); sd.size = new Size(SIDE, 0); sd.centerAlignContent(); sd.spacing = 3
+    const mine = isMine(name)
+    const put = () => {
+      const t = sd.addText(ab[name] || name)
+      t.font = win || mine ? Font.semiboldSystemFont(9.5) : Font.systemFont(9.5)
+      t.textColor = mine ? C.hlText : lose ? C.sub : C.text
+      t.lineLimit = 1; t.minimumScaleFactor = 0.85
+    }
+    // niente spaziatori (iOS ne riserva una larghezza minima): logo e nome stanno al centro della loro metà
+    if (isHome) { logo(sd, name, 11); put() }
+    else { put(); logo(sd, name, 11) }
+  }
+  side(m.home, hw, aw, true)
+  const c = r.addStack(); c.size = new Size(CHIP, 0); c.centerAlignContent(); c.cornerRadius = 4; c.setPadding(1, 0, 1, 0)
   if (m.sets) c.backgroundColor = C.chip
   else { c.borderColor = C.chip; c.borderWidth = 1 }
   const ct = c.addText(m.sets ? `${m.sets[0]}-${m.sets[1]}` : isToday(m.ts) ? fmtTime(m.ts) : fmtDate(m.ts))
   ct.font = m.sets ? Font.boldRoundedSystemFont(F_SUB) : Font.mediumSystemFont(8.5)
   ct.textColor = m.sets ? (m.ufficioso ? C.uff : C.text) : C.sub; ct.lineLimit = 1; ct.minimumScaleFactor = 0.8
-  cell(r, ab[m.away] || m.away, "flex", nameFont(aw, isMine(m.away)), nameColor(hw, isMine(m.away)), "right", true)
-  logo(r, m.away, 12)
+  side(m.away, aw, hw, false)
 }
 
 // Nomi brevi (al massimo 7 caratteri), riconoscibili e tutti diversi tra loro:
