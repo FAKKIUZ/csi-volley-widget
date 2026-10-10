@@ -1011,7 +1011,7 @@ function panoramaLarge(w, d) {
     }
     const dr = l.addStack(); dotsOnly(dr, t.form, 9); dr.addSpacer()
 
-    const sep = box.addStack(); sep.size = new Size(1, 50); sep.backgroundColor = C.chip
+    const sep = box.addStack(); sep.size = new Size(1, 60); sep.backgroundColor = C.chip
 
     const r = box.addStack(); r.layoutVertically(); r.spacing = 1
     const m = t.last
@@ -1024,25 +1024,25 @@ function panoramaLarge(w, d) {
       logo(lr, opp(m), 13)
       const o = txt(lr, `${isMine(m.home) ? "vs" : "@"} ${opp(m)}`, F_TXT, C.text, "semibold"); o.minimumScaleFactor = 0.75
     } else txt(r, "—", F_TXT, C.sub)
-    r.addSpacer(4)
+    r.addSpacer(3)
     const nx = t.next
     sectionLabel(r, nx ? `Prossima · ${countdown(nx.ts)}` : "Prossima")
     if (nx) {
       const nr = r.addStack(); nr.centerAlignContent(); nr.spacing = 5; nr.url = matchUrl(nx)
       logo(nr, opp(nx), 13)
       const o = txt(nr, `${isMine(nx.home) ? "vs" : "@"} ${opp(nx)}`, F_TXT, C.text, "semibold"); o.minimumScaleFactor = 0.75
-      const when = r.addStack(); when.centerAlignContent(); when.spacing = 4
-      txt(when, `${dayName(nx.ts)} ${fmtDate(nx.ts)} · ${fmtTime(nx.ts)}`, F_SUB, C.sub)
+      txt(r, `${dayName(nx.ts)} ${fmtDate(nx.ts)} · ${fmtTime(nx.ts)}`, F_SUB, C.sub)
       const v = venueOf(d, nx)
       if (v) {
-        const vs = when.addStack(); vs.centerAlignContent(); vs.spacing = 2; vs.url = mapsUrl(v)
+        // la palestra su una riga sua, così data e ora non vengono mai tagliate
+        const vs = r.addStack(); vs.centerAlignContent(); vs.spacing = 3; vs.url = mapsUrl(v)
         const pin = symbol("mappin.circle.fill", F_SUB)
         if (pin) { const i = vs.addImage(pin); i.imageSize = new Size(F_SUB, F_SUB); i.tintColor = C.accent }
-        const vt = txt(vs, venueCity(v) || venueName(v), F_SUB, C.sub); vt.minimumScaleFactor = 0.9
+        txt(vs, venueShort(v), F_SUB, C.sub)
       }
     } else txt(r, "Nessuna in calendario", F_TXT, C.sub)
     box.addSpacer()
-    avail -= 80
+    avail -= 92
   }
 
   // ── classifica in due colonne: se ne calcola l'altezza per lasciare il resto alla giornata ──
