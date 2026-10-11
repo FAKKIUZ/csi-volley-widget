@@ -1826,11 +1826,32 @@ function giornate(d) {
   return g.sort((a, b) => a.first - b.first)
 }
 
-// Giornata in corso = quella dell'ultimo risultato; dal giorno in cui inizia la giornata successiva
-// si passa avanti anche se nella precedente manca ancora qualche risultato (es. partita rinviata)
+// Giornata in corso, costruita attorno alla squadra seguita: è la giornata della sua ultima partita,
+// e dal giorno della sua prossima partita diventa quella della prossima (anche se è un recupero
+// di una giornata vecchia). Sotto, nel Risultati grande, la prima giornata con partite ancora da giocare.
+// Senza squadra (o senza sue partite) vale la regola generale: si segue il calendario del girone.
 function currentGiornata(d) {
   const g = giornate(d)
   if (!g.length) return {}
+  const endToday = new Date(); endToday.setHours(23, 59, 59, 999)
+  const startToday = new Date(); startToday.setHours(0, 0, 0, 0)
+  const mine = TEAM ? d.matches.filter(m => isMyMatch(m) && !m.tbd).sort((a, b) => a.ts - b.ts) : []
+  if (mine.length) {
+    const started = mine.filter(m => m.ts <= endToday.getTime())
+    const focus = started.length ? started[started.length - 1] : mine[0]
+    const cur = g.find(x => x.label === focus.giornata)
+    if (cur) {
+      // sotto: la prima giornata (dopo quella mostrata) con partite ancora da giocare
+      const open = g.filter(x => x !== cur && x.matches.some(m => !m.sets && !m.tbd && m.ts >= startToday.getTime()))
+      return { cur, next: open.find(x => x.first >= cur.first) || open[0] }
+    }
+  }
+  return generalGiornata(g, d, endToday)
+}
+
+// Regola generale: giornata dell'ultimo risultato; dal giorno in cui inizia la successiva si passa avanti
+// anche se nella precedente manca ancora qualche risultato (es. partita rinviata)
+function generalGiornata(g, d, endToday) {
   const last = played(d)[0]
   let i = last ? g.findIndex(x => x.label === last.giornata) : -1
   if (i < 0) {
@@ -1838,7 +1859,6 @@ function currentGiornata(d) {
     i = g.findIndex(x => x.matches.some(m => m.ts >= today.getTime()))
     if (i < 0) i = g.length - 1
   }
-  const endToday = new Date(); endToday.setHours(23, 59, 59, 999)
   while (g[i + 1] && g[i + 1].first > 0 && g[i + 1].first <= endToday.getTime()) i++
   return { cur: g[i], next: g[i + 1] }
 }
