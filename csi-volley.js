@@ -1091,15 +1091,22 @@ function panoramaLarge(w, d) {
   // ── scheda squadra: a sinistra posizione e forma, a destra ultima e prossima ──
   if (TEAM && (t.me || t.last || t.next)) {
     w.addSpacer()
-    // due colonne compatte, centrate in verticale: lo spazio libero si divide sopra e sotto
+    // due colonne compatte, centrate in verticale e in orizzontale: le colonne sono larghe quanto
+    // il loro contenuto e due spaziatori uguali ai lati dividono a metà lo spazio che avanza.
+    // La linea sta a metà strada tra le due colonne (gapL prima, gapR dopo).
     const box = w.addStack(); box.centerAlignContent(); box.spacing = 0
     box.size = new Size(LRG.w, 0)
-    box.setPadding(8, 10, 8, 10); box.cornerRadius = 12; box.backgroundColor = C.stripe
-    // colonna sinistra larga quanto serve (logo, nome, forma): il resto va a ultima e prossima.
-    // La linea sta a metà strada tra il contenuto a sinistra e quello a destra (gapL prima, gapR dopo)
-    const leftW = 100, gapL = 12, gapR = 20
-    const rightW = LRG.w - 20 - leftW - gapL - 1 - gapR - 2 // 2 punti di tolleranza
-    const l = box.addStack(); l.layoutVertically(); l.spacing = 6; l.size = new Size(leftW, 0)
+    box.setPadding(8, 2, 8, 2); box.cornerRadius = 12; box.backgroundColor = C.stripe
+    const gapL = 20, gapR = 20, SIDE = 10 // SIDE = margine minimo ai lati (spaziatore minimo ~8 + padding 2)
+    // limiti di larghezza: oltre questi la colonna si ferma e il testo si adatta, così non si sfora mai
+    // stima tarata sugli screenshot del 12 Pro (~0,5 × corpo per carattere); textW resta più prudente
+    const est = (str, size) => String(str).length * size * 0.5
+    const leftMax = 110
+    const leftEst = Math.max(84, 46 + est(TEAM, 13))
+    const rightW = LRG.w - 2 * SIDE - Math.min(leftMax, leftEst) - gapL - 1 - gapR - 4
+    box.addSpacer()
+    const l = box.addStack(); l.layoutVertically(); l.spacing = 6
+    if (leftEst > leftMax) l.size = new Size(leftMax, 0)
     const top = l.addStack(); top.centerAlignContent(); top.spacing = 8
     const ring = top.addStack(); ring.size = new Size(38, 38); ring.cornerRadius = 19
     ring.borderColor = C.accent; ring.borderWidth = 2; ring.centerAlignContent()
@@ -1111,15 +1118,22 @@ function panoramaLarge(w, d) {
       txt(p, `${t.me.pos}°`, 16, C.hlText, "bold")
       txt(p, `${t.me.pt} pt`, F_TXT, C.sub, "semibold")
     }
-    const dr = l.addStack(); dotsOnly(dr, t.form, 9); dr.addSpacer()
+    const dr = l.addStack(); dotsOnly(dr, t.form, 9)
 
     // linea divisoria un po' più corta della colonna destra, centrata in verticale
     box.addSpacer(gapL)
     const sep = box.addStack(); sep.size = new Size(1, 60); sep.backgroundColor = C.chip
     box.addSpacer(gapR)
 
-    const r = box.addStack(); r.layoutVertically(); r.spacing = 2; r.size = new Size(rightW, 0)
-    const m = t.last
+    const r = box.addStack(); r.layoutVertically(); r.spacing = 2
+    const m = t.last, nx0 = t.next
+    // la colonna destra si blocca alla larghezza massima solo se una riga rischia di superarla
+    const rightEst = Math.max(
+      m ? 20 + 5 + 30 + 5 + 13 + 5 + est(`@ ${opp(m)}`, F_TXT) : 0,
+      nx0 ? 13 + 5 + est(`vs ${opp(nx0)}`, F_TXT) : 0,
+      nx0 ? est(`Prossima · ${countdown(nx0.ts)}`.toUpperCase(), 9) * 1.2 : 0,
+      nx0 ? est(`${dayName(nx0.ts)} ${fmtDate(nx0.ts)} · ${fmtTime(nx0.ts)}`, F_SUB) + 4 + F_SUB + 2 + est(venueCity(venueOf(d, nx0) || "") || "", F_SUB) : 0)
+    if (rightEst > rightW) r.size = new Size(rightW, 0)
     sectionLabel(r, "Ultima")
     if (m) {
       const lr = r.addStack(); lr.centerAlignContent(); lr.spacing = 5; lr.url = matchUrl(m)
@@ -1148,8 +1162,7 @@ function panoramaLarge(w, d) {
         const vt = txt(vs, textW(full, F_SUB) <= free ? full : city, F_SUB, C.sub); vt.minimumScaleFactor = 0.85
       }
     } else txt(r, "Nessuna in calendario", F_TXT, C.sub)
-    // niente spaziatore finale: le colonne riempiono già la scheda, e lo spaziatore in più (11 + ~8 punti)
-    // la faceva sforare, così iOS spostava tutto a sinistra mangiando il margine
+    box.addSpacer() // uguale a quello iniziale: il contenuto resta centrato
     avail -= 90
   }
 
