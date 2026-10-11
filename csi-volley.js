@@ -591,9 +591,8 @@ function roundRowSmall(stack, m, ab) {
       t.textColor = mine ? C.hlText : lose ? C.sub : C.text
       t.lineLimit = 1; t.minimumScaleFactor = 0.85
     }
-    // niente spaziatori (iOS ne riserva una larghezza minima): logo e nome stanno al centro della loro metà
-    if (isHome) { logo(sd, name, 11); put() }
-    else { put(); logo(sd, name, 11) }
+    // senza loghi: il nome, più lungo, sta al centro della sua metà (niente spaziatori: iOS ne riserva una larghezza minima)
+    put()
   }
   side(m.home, hw, aw, true)
   const c = r.addStack(); c.size = new Size(CHIP, 0); c.centerAlignContent(); c.cornerRadius = 4; c.setPadding(1, 0, 1, 0)
@@ -609,7 +608,7 @@ function roundRowSmall(stack, m, ab) {
 // "Pol.Com.Tavernola" → "Tavern.", "Pcq 1971" → "Pcq", "Volley 2c" → "Vol. 2c", "San Pancrazio" → "S.Panc."
 function shortNames(names) {
   const GENERIC = /^(pol|polisportiva|com|or|oratorio|gso|gs|us|as|asd|ssd|a\.s\.d|s\.s\.d|volley|pallavolo|pvo|team|sport|ac|sc|usd|cs|csi)$/i
-  const MAX = 7
+  const MAX = 11 // senza loghi nel piccolo c'è posto per una parola intera (es. "S.Pancrazio", "Tavernola")
   const base = n => {
     const clean = String(n).trim()
     if (clean.length <= MAX) return clean
