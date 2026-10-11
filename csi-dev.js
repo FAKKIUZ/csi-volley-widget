@@ -509,9 +509,11 @@ function standingsMedium(w, d) {
 
 function standingsLarge(w, d) {
   header(w, d, "Classifica", false, true)
-  w.addSpacer(8)
   const rows = d.standings.slice(0, 14)
-  standingsTable(w, rows, rows.length > 11 ? 11 : 12, 3)
+  const n = rows.length
+  // fino a 10 squadre come sempre; con più squadre righe più basse, così entrano intestazione e "Aggiornata a"
+  w.addSpacer(n > 10 ? 4 : 8)
+  standingsTable(w, rows, n > 11 ? 11 : 12, n <= 10 ? 3 : n === 11 ? 2 : n === 12 ? 1 : 0)
   w.addSpacer()
   const last = played(d)[0]
   if (last && last.giornata) {
