@@ -982,7 +982,8 @@ function miniTable(stack, d, me, width, tight) {
     if (mine) { r.backgroundColor = C.hl; r.cornerRadius = 5 }
     cell(r, x.pos, tight ? 13 : 16, Font.semiboldRoundedSystemFont(F_SUB), x.pos === 1 ? C.accent : C.sub, "center")
     logo(r, x.name, 13)
-    const n = txt(r, x.name, F_TXT, mine ? C.hlText : C.text, mine ? "bold" : "regular"); n.minimumScaleFactor = 0.8
+    // calcio: nel medio la colonna è stretta (~10 lettere), i nomi lunghi perdono le sigle iniziali
+    const n = txt(r, compactName(x.name, tight ? 16 : 11, true), F_TXT, mine ? C.hlText : C.text, mine ? "bold" : "regular"); n.minimumScaleFactor = 0.8
     r.addSpacer()
     if (!mine) {
       const diff = x.pt - me.pt
@@ -1389,12 +1390,16 @@ function panoStandingRow(stack, s, nameSize, width) {
 
 // Calcio, liste strette (piccolo e medio): i nomi lunghi perdono le sigle iniziali comuni
 // ("Or.S.Marco Forest" → "S.Marco Forest", "Pol.Com.Tavernola" → "Tavernola") invece di troncarsi
-function rowName(s) {
-  if (!CALCIO) return s.name
-  let x = s.name
-  const PRE = /^(Or|Pol|Com|Gso|Gs|Us|As|Asd|Ssd|Csi|Calcio|Polisportiva|Oratorio)[.\s]+/i
-  while (x.length > 12 && PRE.test(x)) x = x.replace(PRE, "")
-  return x || s.name
+function rowName(s) { return compactName(s.name, 12) }
+function compactName(name, max, more) {
+  if (!CALCIO) return name
+  let x = name
+  const PRE = more ? /^(Or|Pol|Com|Gso|Gs|Us|As|Asd|Ssd|Csi|Calcio|Polisportiva|Oratorio|Nova|Virtus|Real|St|Sant)[.\s]+/i
+    : /^(Or|Pol|Com|Gso|Gs|Us|As|Asd|Ssd|Csi|Calcio|Polisportiva|Oratorio)[.\s]+/i
+  // una volta iniziato si tolgono tutte le sigle iniziali ("Pol.Com.Tavernola" → "Tavernola", mai "Com.Tavernola")
+  let cut = false
+  while ((cut || x.length > max) && PRE.test(x)) { x = x.replace(PRE, ""); cut = true }
+  return x || name
 }
 
 // Solo i pallini della forma (ultime 5: V verde, P rossa, vuoti da giocare), senza etichetta
