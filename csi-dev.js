@@ -72,6 +72,7 @@ const LRG = (() => {
 const F_TXT = 10.5, F_SUB = 10
 let LOGOS = {}
 let TREND = null // posizioni a fine giornata precedente, per le frecce
+let FAMILY = "" // dimensione del widget che si sta disegnando
 
 // ───────────────────────── main ─────────────────────────
 
@@ -445,6 +446,7 @@ function logo(stack, name, size) {
 // ───────────────────────── widget ─────────────────────────
 
 async function buildWidget(d, family, view) {
+  FAMILY = family
   const w = new ListWidget()
   w.url = URL_GIRONE
   w.refreshAfterDate = new Date(Date.now() + CONFIG.aggiornaOgniMin * 60000)
@@ -1367,7 +1369,7 @@ function teamScore(stack, m, size) {
 // Grandezza dei nomi in una lista di classifica: 10,5 se ci stanno, altrimenti un po' meno,
 // uguale per tutte le righe del widget (posizione, logo, punti e spazi ≈ 72 pt)
 function rowNameSize(rows, width) {
-  const longest = Math.max(1, ...rows.map(r => r.name.length))
+  const longest = Math.max(1, ...rows.map(r => rowName(r).length))
   return Math.max(9, Math.min(F_TXT, Math.floor((width - 72) / (longest * 0.58) * 2) / 2))
 }
 
@@ -1380,9 +1382,19 @@ function panoStandingRow(stack, s, nameSize, width) {
   cell(r, s.pos, 16, Font.semiboldRoundedSystemFont(F_SUB), s.pos === 1 ? C.accent : C.sub, "center", true)
   if (TREND) trend(r, s, F_SUB)
   logo(r, s.name, 13)
-  const n = txt(r, s.name, nameSize, mine ? C.hlText : C.text, mine ? "bold" : "regular"); n.minimumScaleFactor = 0.9
+  const n = txt(r, rowName(s), nameSize, mine ? C.hlText : C.text, mine ? "bold" : "regular"); n.minimumScaleFactor = 0.9
   r.addSpacer()
   cell(r, s.pt, 18, ptsFont(s, F_TXT), ptsColor(s), "center")
+}
+
+// Calcio, liste strette (piccolo e medio): i nomi lunghi perdono le sigle iniziali comuni
+// ("Or.S.Marco Forest" → "S.Marco Forest", "Pol.Com.Tavernola" → "Tavernola") invece di troncarsi
+function rowName(s) {
+  if (!CALCIO) return s.name
+  let x = s.name
+  const PRE = /^(Or|Pol|Com|Gso|Gs|Us|As|Asd|Ssd|Csi|Calcio|Polisportiva|Oratorio)[.\s]+/i
+  while (x.length > 12 && PRE.test(x)) x = x.replace(PRE, "")
+  return x || s.name
 }
 
 // Solo i pallini della forma (ultime 5: V verde, P rossa, vuoti da giocare), senza etichetta
@@ -1664,7 +1676,10 @@ function header(w, d, subtitle, compact, fixed) {
   if (compact) {
     // in grande cosa mostra il widget, sotto il girone (dimensioni fisse, uguali in tutti i widget)
     txt(tt, subtitle, 12, C.text, "bold")
-    const g = txt(tt, d.title, F_SUB, C.sub, "semibold"); g.lineLimit = 1; g.minimumScaleFactor = 0.85
+    // nel piccolo un titolo lungo accorcia la prima parola ("Dilettanti B · Girone C" → "Dilett. B · Girone C")
+    let st = d.title
+    if (FAMILY === "small" && st.length > 18) st = st.replace(/^(\S{6})\S{2,}/, "$1.")
+    const g = txt(tt, st, F_SUB, C.sub, "semibold"); g.lineLimit = 1; g.minimumScaleFactor = 0.85
     h.addSpacer()
     return h
   }
