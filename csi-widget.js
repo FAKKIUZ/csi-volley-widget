@@ -49,7 +49,10 @@ const C = {
 }
 
 const SCREEN = Device.screenSize()
-const WIDE = Math.round(Math.min(SCREEN.width, SCREEN.height) * 0.89) // larghezza widget medio/grande (stima)
+// profilo del telefono: "larghezza x altezza" dello schermo in punti
+const DEV = `${Math.round(Math.min(SCREEN.width, SCREEN.height))}x${Math.round(Math.max(SCREEN.width, SCREEN.height))}`
+// larghezza widget medio/grande: misurata dove c'è un profilo (iPhone 11 / XR / 11 Pro Max: 354), altrimenti stimata
+const WIDE = { "414x896": 354 }[DEV] || Math.round(Math.min(SCREEN.width, SCREEN.height) * 0.89)
 const PAD = 14
 const INNER = WIDE - PAD * 2
 const INNER_SMALL = Math.round(WIDE * 0.467) - PAD * 2
@@ -57,16 +60,17 @@ const INNER_SMALL = Math.round(WIDE * 0.467) - PAD * 2
 // Servono ai medi per usare tutta l'altezza: contenuto = misure meno i margini (14 ai lati, 12 sopra e sotto).
 const MED = (() => {
   const sw = Math.round(Math.min(SCREEN.width, SCREEN.height)), sh = Math.round(Math.max(SCREEN.width, SCREEN.height))
-  const t = { "430x932": [364, 170], "428x926": [364, 170], "414x896": [360, 169], "414x736": [348, 157],
+  // 414x896 (iPhone 11) misurato sugli screenshot con iOS 27: 354×166
+  const t = { "430x932": [364, 170], "428x926": [364, 170], "414x896": [354, 166], "414x736": [348, 157],
     "393x852": [338, 158], "390x844": [338, 158], "375x812": [329, 155], "360x780": [329, 155],
     "375x667": [321, 148], "320x568": [292, 141] }[`${sw}x${sh}`] || [Math.round(sw * 0.867), Math.round(sw * 0.405)]
   return { w: t[0] - PAD * 2, h: t[1] - 24 }
 })()
 // Misure reali del widget grande (punti). Riferimento: iPhone 12 Pro con iOS 27, 352×352
-// (misurate sugli screenshot) → contenuto 324×328. Altri profili si aggiungeranno qui senza toccare questo.
+// (misurate sugli screenshot) → contenuto 324×328. iPhone 11 (414x896): 354×371, misurato allo stesso modo.
 const LRG = (() => {
   const sw = Math.round(Math.min(SCREEN.width, SCREEN.height)), sh = Math.round(Math.max(SCREEN.width, SCREEN.height))
-  const t = { "390x844": [352, 352] }[`${sw}x${sh}`] || [WIDE, Math.round(WIDE * 1.05)]
+  const t = { "390x844": [352, 352], "414x896": [354, 371] }[`${sw}x${sh}`] || [WIDE, Math.round(WIDE * 1.05)]
   return { w: t[0] - PAD * 2, h: t[1] - 24 }
 })()
 // scala dei caratteri della panoramica: testi 10,5 · dettagli 10 · etichette 9 (sectionLabel)
