@@ -1178,12 +1178,23 @@ function panoramaLarge(w, d) {
 
     const r = box.addStack(); r.layoutVertically(); r.spacing = 2
     const m = t.last, nx0 = t.next
+    // accanto a data e ora: palestra completa se entra, altrimenti il paese, altrimenti la sua prima parola
+    // ("Scuole Elementari · Cavernago" → "Cavernago"; "Cividate al Piano" → "Cividate"): data e ora restano intere
+    const venueLabel = (v, dateStr) => {
+      const free = rightW - est(dateStr, F_SUB) - 4 - F_SUB - 2 - 4
+      const full = venueShort(v), city = venueCity(v) || venueName(v)
+      if (textW(full, F_SUB) <= free) return full
+      if (est(city, F_SUB) <= free) return city
+      return city.split(/\s+/)[0]
+    }
+    const nxDate = nx0 ? `${dayName(nx0.ts)} ${fmtDate(nx0.ts)} · ${fmtTime(nx0.ts)}` : ""
+    const nxVenue = nx0 && venueOf(d, nx0) ? venueLabel(venueOf(d, nx0), nxDate) : ""
     // la colonna destra si blocca alla larghezza massima solo se una riga rischia di superarla
     const rightEst = Math.max(
       m ? 20 + 5 + 30 + 5 + 13 + 5 + est(`@ ${opp(m)}`, F_TXT) : 0,
       nx0 ? 13 + 5 + est(`vs ${opp(nx0)}`, F_TXT) : 0,
       nx0 ? est(nextLabel(nx0).toUpperCase(), 9) * 1.2 : 0,
-      nx0 ? est(`${dayName(nx0.ts)} ${fmtDate(nx0.ts)} · ${fmtTime(nx0.ts)}`, F_SUB) + 4 + F_SUB + 2 + est(venueCity(venueOf(d, nx0) || "") || "", F_SUB) : 0)
+      nx0 ? est(nxDate, F_SUB) + 4 + F_SUB + 2 + est(nxVenue, F_SUB) : 0)
     if (rightEst > rightW) r.size = new Size(rightW, 0)
     sectionLabel(r, "Ultima")
     if (m) {
@@ -1207,10 +1218,7 @@ function panoramaLarge(w, d) {
         const vs = when.addStack(); vs.centerAlignContent(); vs.spacing = 2; vs.url = mapsUrl(v)
         const pin = symbol("mappin.circle.fill", F_SUB)
         if (pin) { const i = vs.addImage(pin); i.imageSize = new Size(F_SUB, F_SUB); i.tintColor = C.accent }
-        // palestra completa se entra accanto a data e ora, altrimenti solo il paese (data e ora restano intere)
-        const full = venueShort(v), city = venueCity(v) || venueName(v)
-        const free = rightW - textW(dateStr, F_SUB) - 4 - F_SUB - 2
-        const vt = txt(vs, textW(full, F_SUB) <= free ? full : city, F_SUB, C.sub); vt.minimumScaleFactor = 0.85
+        const vt = txt(vs, nxVenue || venueLabel(v, dateStr), F_SUB, C.sub); vt.minimumScaleFactor = 0.85
       }
     } else txt(r, "Nessuna in calendario", F_TXT, C.sub)
     box.addSpacer() // uguale a quello iniziale: il contenuto resta centrato
