@@ -1177,7 +1177,10 @@ function panoramaLarge(w, d) {
     w.addSpacer(4)
     const free = avail - standH - 16
     const fit = Math.max(2, Math.floor((free + 2) / 21))
-    const ms = pickMatches(g.cur.matches, fit)
+    // la partita della squadra già mostrata nella scheda sopra (Ultima o Prossima) non si ripete:
+    // il posto liberato va alle altre partite della giornata
+    const above = TEAM ? [t.last, t.next].filter(Boolean) : []
+    const ms = pickMatches(g.cur.matches.filter(m => !above.includes(m)), fit)
     const list = w.addStack(); list.layoutVertically(); list.spacing = 2
     const lay = rowLayout(ms, LRG.w, F_TXT)
     lay.nameSize = Math.min(lay.nameSize, F_TXT)
