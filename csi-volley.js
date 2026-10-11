@@ -1758,7 +1758,8 @@ function giornate(d) {
   return g.sort((a, b) => a.first - b.first)
 }
 
-// Giornata in corso = quella dell'ultimo risultato; se è conclusa e la successiva è già iniziata, passa avanti
+// Giornata in corso = quella dell'ultimo risultato; dal giorno in cui inizia la giornata successiva
+// si passa avanti anche se nella precedente manca ancora qualche risultato (es. partita rinviata)
 function currentGiornata(d) {
   const g = giornate(d)
   if (!g.length) return {}
@@ -1768,7 +1769,9 @@ function currentGiornata(d) {
     const today = new Date(); today.setHours(0, 0, 0, 0)
     i = g.findIndex(x => x.matches.some(m => m.ts >= today.getTime()))
     if (i < 0) i = g.length - 1
-  } else if (g[i + 1] && g[i].matches.every(m => m.sets) && g[i + 1].first <= Date.now()) i++
+  }
+  const endToday = new Date(); endToday.setHours(23, 59, 59, 999)
+  while (g[i + 1] && g[i + 1].first > 0 && g[i + 1].first <= endToday.getTime()) i++
   return { cur: g[i], next: g[i + 1] }
 }
 
