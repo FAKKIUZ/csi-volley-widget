@@ -5,7 +5,7 @@
 //
 // CSI Volley — widget per Scriptable con classifica, risultati e la tua squadra
 // di un girone di pallavolo CSI (live.centrosportivoitaliano.it)
-// https://github.com/FAKKIUZ/csi-volley-widget
+// https://github.com/FAKKIUZ/csi-widget
 //
 // ═════════════ IMPOSTAZIONI: modifica solo queste righe ═════════════
 
@@ -29,7 +29,7 @@ const IMPOSTAZIONI = {
 // Il codice del widget viene scaricato da GitHub e salvato sul telefono: si riscarica al massimo
 // ogni 3 ore, così le nuove versioni arrivano da sole. Senza rete usa l'ultima copia salvata.
 
-const CODE_URL = "https://raw.githubusercontent.com/FAKKIUZ/csi-volley-widget/main/csi-volley.js"
+const CODE_URL = "https://raw.githubusercontent.com/FAKKIUZ/csi-widget/main/csi-widget.js"
 const REFRESH_MS = 3 * 60 * 60 * 1000
 
 const fm = FileManager.local()
@@ -47,7 +47,7 @@ if (!fm.fileExists(codePath) || config.runsInApp || Date.now() - savedAt > REFRE
     const req = new Request(CODE_URL)
     req.timeoutInterval = 10
     const text = await req.loadString()
-    if (req.response.statusCode === 200 && text.includes("CSI-VOLLEY-SCRIPTABLE")) {
+    if (req.response.statusCode === 200 && (text.includes("CSI-WIDGET-SCRIPTABLE") || text.includes("CSI-VOLLEY-SCRIPTABLE"))) {
       fm.writeString(codePath, text)
       fm.writeString(timePath, String(Date.now()))
     }
