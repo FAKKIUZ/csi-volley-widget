@@ -1539,10 +1539,23 @@ async function syncCalendar(d, silent) {
       old ? updated++ : added++
     } catch (err) { errors++; lastError = String(err && err.message || err) }
   }
+  // pulizia: le partite di QUESTO girone finite in un altro calendario (es. quello di un altro script)
+  // si tolgono da lì, perché ora stanno nel calendario scelto. Si riconoscono dal codice partita (id:…)
+  let moved = 0
+  try {
+    const codes = new Set(mine.map(m => m.code))
+    for (const e of await CalendarEvent.between(from, to)) {
+      const id = ((e.notes || "").match(/id:(\S+)/) || [])[1]
+      if (!id || !codes.has(id) || !e.calendar || e.calendar.identifier === cal.identifier) continue
+      if (!e.calendar.allowsContentModifications) continue
+      try { e.remove(); moved++ } catch (err) {}
+    }
+  } catch (e) {}
   await say(errors ? "Calendario aggiornato con errori" : "Calendario aggiornato",
     `Calendario "${cal.title}": ${added} partite aggiunte, ${updated} aggiornate.` +
+    (moved ? `\n${moved} partite tolte da altri calendari, dove erano finite per errore.` : "") +
     (errors ? `\n${errors} non salvate: ${lastError}` : "\nD'ora in poi si aggiorna da solo (widget o automazione)."))
-  return { added, updated, errors }
+  return { added, updated, errors, moved }
 }
 
 // Scriptable non può creare calendari di eventi: usa "CSI · <squadra>" se esiste,
