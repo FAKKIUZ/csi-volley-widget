@@ -982,7 +982,7 @@ function miniTable(stack, d, me, width, tight) {
     if (mine) { r.backgroundColor = C.hl; r.cornerRadius = 5 }
     cell(r, x.pos, tight ? 13 : 16, Font.semiboldRoundedSystemFont(F_SUB), x.pos === 1 ? C.accent : C.sub, "center")
     logo(r, x.name, 13)
-    // calcio: nel medio la colonna è stretta (~10 lettere), i nomi lunghi perdono le sigle iniziali
+    // nel medio la colonna è stretta (~10 lettere): i nomi lunghi perdono le sigle iniziali
     const n = txt(r, compactName(x.name, tight ? 16 : 11, true), F_TXT, mine ? C.hlText : C.text, mine ? "bold" : "regular"); n.minimumScaleFactor = 0.8
     r.addSpacer()
     if (!mine) {
@@ -1388,11 +1388,10 @@ function panoStandingRow(stack, s, nameSize, width) {
   cell(r, s.pt, 18, ptsFont(s, F_TXT), ptsColor(s), "center")
 }
 
-// Calcio, liste strette (piccolo e medio): i nomi lunghi perdono le sigle iniziali comuni
+// Liste strette (piccolo e medio), calcio e volley: i nomi lunghi perdono le sigle iniziali comuni
 // ("Or.S.Marco Forest" → "S.Marco Forest", "Pol.Com.Tavernola" → "Tavernola") invece di troncarsi
 function rowName(s) { return compactName(s.name, 12) }
 function compactName(name, max, more) {
-  if (!CALCIO) return name
   let x = name
   // sigle societarie comuni, anche puntate: Or., Pol., G.S.O., U.S.D., A.S.D., S.S.D., A.C., C.S., F.C., P.G.S.…
   const SIG = "Or|Orat|Oratorio|Pol|Polisp|Polisportiva|Com|Gso|G\\.S\\.O|Gs|G\\.S|Usd|U\\.S\\.D|Us|U\\.S|Asd|A\\.S\\.D|As|A\\.S|Ssd|S\\.S\\.D|Ss|S\\.S|Acd|A\\.C\\.D|Ac|A\\.C|Cs|C\\.S|Csi|Fc|F\\.C|Pgs|P\\.G\\.S|Asdc|Calcio|Team"
