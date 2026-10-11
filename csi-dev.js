@@ -1394,8 +1394,9 @@ function rowName(s) { return compactName(s.name, 12) }
 function compactName(name, max, more) {
   if (!CALCIO) return name
   let x = name
-  const PRE = more ? /^(Or|Pol|Com|Gso|Gs|Us|As|Asd|Ssd|Csi|Calcio|Polisportiva|Oratorio|Nova|Virtus|Real|St|Sant)[.\s]+/i
-    : /^(Or|Pol|Com|Gso|Gs|Us|As|Asd|Ssd|Csi|Calcio|Polisportiva|Oratorio)[.\s]+/i
+  // sigle societarie comuni, anche puntate: Or., Pol., G.S.O., U.S.D., A.S.D., S.S.D., A.C., C.S., F.C., P.G.S.…
+  const SIG = "Or|Orat|Oratorio|Pol|Polisp|Polisportiva|Com|Gso|G\\.S\\.O|Gs|G\\.S|Usd|U\\.S\\.D|Us|U\\.S|Asd|A\\.S\\.D|As|A\\.S|Ssd|S\\.S\\.D|Ss|S\\.S|Acd|A\\.C\\.D|Ac|A\\.C|Cs|C\\.S|Csi|Fc|F\\.C|Pgs|P\\.G\\.S|Asdc|Calcio|Team"
+  const PRE = new RegExp(`^(${SIG}${more ? "|Nova|Virtus|Real|St|Sant" : ""})[.\\s]+`, "i")
   // una volta iniziato si tolgono tutte le sigle iniziali ("Pol.Com.Tavernola" → "Tavernola", mai "Com.Tavernola")
   let cut = false
   while ((cut || x.length > max) && PRE.test(x)) { x = x.replace(PRE, ""); cut = true }
