@@ -1,6 +1,6 @@
 # CSI Widget — pallavolo e calcio sull'iPhone
 
-Widget per **Scriptable** (iOS) con classifica, risultati e la propria squadra di un girone CSI di
+Widget per **Scriptable** (iOS) con classifica, risultati, la propria squadra e la sua ultima partita di un girone CSI di
 **pallavolo** o di **calcio** (a 11, a 7, a 5), letti dalla pagina pubblica
 [live.centrosportivoitaliano.it](https://live.centrosportivoitaliano.it).
 Lo sport si riconosce da solo dal link del girone.
@@ -56,17 +56,12 @@ Ogni widget sceglie la sua vista: tieni premuto sul widget → **Modifica widget
 | i risultati della giornata della tua squadra | `risultati` |
 | la scheda della tua squadra | `squadra` |
 | un po' di tutto | `panoramica` |
-| l'ultima partita della tua squadra | `ultima` |
 | l'ultima partita della tua squadra, nel dettaglio | `ultima` |
 
 La **panoramica** cambia con la dimensione del widget:
 - **piccolo**: posizione, chi ti sta sopra e sotto in classifica, ultimo risultato e prossima partita;
 - **medio**: la tua squadra con ultima e prossima partita, accanto alla classifica;
 - **grande**: scheda della squadra, giornata in corso e classifica completa.
-
-L'**ultima** partita mostra punteggio e data (piccolo), poi i set del volley o i gol del calcio con il minuto
-(medio); nel grande la cronaca completa del calcio (gol, marcatori se il sito li inserisce, ammonizioni,
-fine primo tempo) o la tabella dei set del volley, e i precedenti tra le due squadre.
 
 La vista **ultima** mostra l'ultima partita giocata dalla tua squadra:
 - **piccolo**: stemmi, punteggio, esito (V/N/P) e data;
@@ -92,7 +87,7 @@ In alternativa, per un solo widget, nel Parameter si possono scrivere anche il l
 - Toccando il widget si apre la pagina del girone sul sito CSI. Nei widget medio e grande, toccando una
   partita se ne apre la scheda, e toccando la palestra il percorso nell'app di navigazione predefinita
   (su iPhone: Impostazioni → App → App predefinite → Navigazione). Nel piccolo iOS permette un solo tocco:
-  apre sempre la pagina del girone.
+  apre la pagina del girone. Fa eccezione la vista **ultima**, che in ogni dimensione apre la pagina della partita.
 - I risultati in **rosso** non sono ancora ufficiali, come sul sito.
 - Il risultato della tua squadra si legge così: bollino **V** (vittoria, verde), **N** (pareggio, grigio,
   solo calcio) o **P** (sconfitta, rossa), poi il punteggio sempre in ordine casa-ospite con il
