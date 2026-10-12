@@ -1617,14 +1617,19 @@ function lastMedium(w, d, t, info) {
   // la colonna destra non può superare lo spazio rimasto (margini minimi di 8 ai lati)
   const rightMax = MED.w - leftW - 2 * GAP - 1 - 16
   if (!CALCIO) {
-    sectionLabel(r, "Set")
+    // colonne fisse: numero del set a sinistra, poi punti · trattino · punti centrati, così il trattino
+    // sta sempre nello stesso punto su tutte le righe; "SET" centrato sopra i punteggi
+    const NW = 18, PW = 24, DW = 10, SP = 4
+    const lb = r.addStack(); lb.spacing = 0
+    lb.addSpacer(NW + SP)
+    const lc = lb.addStack(); lc.size = new Size(PW * 2 + DW + SP * 2, 0); sectionLabel(lc, "Set")
     m.parziali.forEach((p, i) => {
-      const s = r.addStack(); s.centerAlignContent(); s.spacing = 6
-      txt(s, `${i + 1}°`, 9, C.sub, "semibold")
+      const s = r.addStack(); s.centerAlignContent(); s.spacing = SP
+      cell(s, `${i + 1}°`, NW, Font.semiboldSystemFont(9), C.sub, "left")
       const hw = p[0] > p[1]
-      txt(s, p[0], F_TXT, hw ? C.text : C.sub, hw ? "bold" : "regular")
-      txt(s, "-", F_TXT, C.sub)
-      txt(s, p[1], F_TXT, hw ? C.sub : C.text, hw ? "regular" : "bold")
+      cell(s, p[0], PW, hw ? Font.boldSystemFont(F_TXT) : Font.systemFont(F_TXT), hw ? C.text : C.sub, "center")
+      cell(s, "-", DW, Font.systemFont(F_TXT), C.sub, "center")
+      cell(s, p[1], PW, hw ? Font.systemFont(F_TXT) : Font.boldSystemFont(F_TXT), hw ? C.sub : C.text, "center")
     })
     if (!m.parziali.length) txt(r, "—", F_TXT, C.sub)
   } else {
