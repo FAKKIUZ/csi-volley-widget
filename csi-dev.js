@@ -2663,15 +2663,17 @@ function koPath(stack, d, width, maxRows) {
   stack.addSpacer(3)
   const box = stack.addStack(); box.layoutVertically(); box.spacing = 3
   const shown = rows.slice(-(maxRows || 4))
+  // nel piccolo etichette brevi ("Semi", "1° t."), così il nome dell'avversario entra intero
+  const lab = l => width < 150 ? roundShort(l).replace(/^Semifinale$/, "Semi").replace(/ turno$/, " t.") : roundShort(l)
   // colonna del turno larga quanto l'etichetta più lunga (+ i ~8 punti che iOS tiene per lo spaziatore)
-  const RW = Math.ceil(Math.max(...shown.map(([l]) => roundShort(l).length)) * 9 * 0.52) + 10
+  const RW = Math.ceil(Math.max(...shown.map(([l]) => lab(l).length)) * 9 * 0.52) + 10
   for (const [label, t] of shown) {
     const r = box.addStack(); r.centerAlignContent(); r.spacing = 4; r.size = new Size(width, 0)
     r.url = matchUrl(t.legs ? t.legs[t.legs.length - 1] : t)
     // colonne fisse: turno, avversario (senza logo, così il nome entra), esito a destra
     // testi semplici, senza celle a larghezza fissa: nelle celle iOS riserva ~8 punti a ogni spaziatore
     // e i nomi si tagliavano ("1° turno" e "2° turno" sono lunghi uguali, quindi restano allineati)
-    cell(r, roundShort(label), RW, Font.semiboldSystemFont(9), C.sub, "left")
+    cell(r, lab(label), RW, Font.semiboldSystemFont(9), C.sub, "left")
     const o = isMine(t.home) ? t.away : t.home
     txt(r, ab[o] || o, F_SUB, C.text).minimumScaleFactor = 0.85
     r.addSpacer()
