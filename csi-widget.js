@@ -1601,7 +1601,7 @@ function lastMedium(w, d, t, info) {
   w.addSpacer()
   // tutto il contenuto centrato in orizzontale: due spazi uguali ai lati, colonna destra larga quanto serve
   const row = w.addStack(); row.centerAlignContent(); row.spacing = 0; row.size = new Size(MED.w, 0)
-  const leftW = 150, GAP = 12
+  const leftW = 145, GAP = 12
   const ab = shortNames(allTeams(d))
   row.addSpacer()
   const l = row.addStack(); l.layoutVertically(); l.spacing = 4; l.size = new Size(leftW, 0)
@@ -1639,15 +1639,17 @@ function lastMedium(w, d, t, info) {
     // fino a 6 righe; se i gol sono di più, due per riga
     const per = goals.length > 6 ? 2 : 1
     const whoOf = e => e.name || ab[e.side === "home" ? m.home : m.away] || (e.side === "home" ? m.home : m.away)
-    const est = Math.max(0, ...goals.map(e => 36 + 24 + String(whoOf(e)).length * 5.5))
+    const est = Math.max(0, ...goals.map(e => 38 + 4 + 22 + 4 + String(whoOf(e)).length * 5.5))
     if (per === 2 || est > rightMax) r.size = new Size(rightMax, 0)
     for (let i = 0; i < goals.length && i < 12; i += per) {
-      const s = r.addStack(); s.centerAlignContent(); s.spacing = 6
+      const s = r.addStack(); s.centerAlignContent(); s.spacing = 4
       for (const e of goals.slice(i, i + per)) {
-        txt(s, minText(e), 9, C.sub, "semibold")
+        // colonne fisse: minuto allineato a destra, punteggio centrato, nome che parte sempre dallo stesso punto
         const who = whoOf(e)
         const mine = isMine(e.side === "home" ? m.home : m.away)
-        const g = txt(s, `${e.score}${per === 1 ? "  " + who : ""}`, F_SUB, mine ? C.hlText : C.text, mine ? "semibold" : "regular"); g.minimumScaleFactor = 0.8
+        cell(s, minText(e), 38, Font.semiboldSystemFont(9), C.sub, "right")
+        cell(s, e.score, 22, mine ? Font.semiboldSystemFont(F_SUB) : Font.systemFont(F_SUB), mine ? C.hlText : C.text, "center")
+        if (per === 1) { const g = txt(s, who, F_SUB, mine ? C.hlText : C.text, mine ? "semibold" : "regular"); g.minimumScaleFactor = 0.8 }
       }
     }
   }
