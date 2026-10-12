@@ -1597,18 +1597,25 @@ function lastMedium(w, d, t, info) {
   if (!m) return noLastWidget(w, d, true)
   w.url = m.href
   header(w, d, "Ultima partita", true)
-  // stacco fisso sotto l'intestazione e spazio libero in fondo: il contenuto resta vicino al titolo
-  w.addSpacer(8)
-  const row = w.addStack(); row.centerAlignContent(); row.spacing = 10
-  const leftW = Math.round(MED.w * 0.5)
+  // spazio uguale sopra e sotto: il contenuto è centrato in verticale tra titolo e bordo
+  w.addSpacer()
+  // tutto il contenuto centrato in orizzontale: due spazi uguali ai lati, colonna destra larga quanto serve
+  const row = w.addStack(); row.centerAlignContent(); row.spacing = 0; row.size = new Size(MED.w, 0)
+  const leftW = 150, GAP = 12
+  const ab = shortNames(allTeams(d))
+  row.addSpacer()
   const l = row.addStack(); l.layoutVertically(); l.spacing = 4; l.size = new Size(leftW, 0)
-  lastScoreboard(l, m, 26, 18, F_SUB, leftW, shortNames(allTeams(d)))
+  lastScoreboard(l, m, 26, 18, F_SUB, leftW, ab)
   const when = l.addStack(); when.addSpacer()
   const v = venueOf(d, m)
   txt(when, `${dayName(m.ts)} ${fmtDate(m.ts)}${v ? " · " + (venueCity(v) || venueName(v)) : ""}`, 9, m.ufficioso ? C.uff : C.sub).minimumScaleFactor = 0.8
   when.addSpacer()
+  row.addSpacer(GAP)
   const sep = row.addStack(); sep.size = new Size(1, MED.h - 44); sep.backgroundColor = C.chip
+  row.addSpacer(GAP)
   const r = row.addStack(); r.layoutVertically(); r.spacing = 2
+  // la colonna destra non può superare lo spazio rimasto (margini minimi di 8 ai lati)
+  const rightMax = MED.w - leftW - 2 * GAP - 1 - 16
   if (!CALCIO) {
     sectionLabel(r, "Set")
     m.parziali.forEach((p, i) => {
@@ -1626,16 +1633,20 @@ function lastMedium(w, d, t, info) {
     if (!goals.length) txt(r, info.events.length ? "nessun gol" : "cronaca non disponibile", F_SUB, C.sub)
     // fino a 6 righe; se i gol sono di più, due per riga
     const per = goals.length > 6 ? 2 : 1
+    const whoOf = e => e.name || ab[e.side === "home" ? m.home : m.away] || (e.side === "home" ? m.home : m.away)
+    const est = Math.max(0, ...goals.map(e => 36 + 24 + String(whoOf(e)).length * 5.5))
+    if (per === 2 || est > rightMax) r.size = new Size(rightMax, 0)
     for (let i = 0; i < goals.length && i < 12; i += per) {
       const s = r.addStack(); s.centerAlignContent(); s.spacing = 6
       for (const e of goals.slice(i, i + per)) {
         txt(s, minText(e), 9, C.sub, "semibold")
-        const who = e.name || (e.side === "home" ? m.home : m.away)
+        const who = whoOf(e)
         const mine = isMine(e.side === "home" ? m.home : m.away)
         const g = txt(s, `${e.score}${per === 1 ? "  " + who : ""}`, F_SUB, mine ? C.hlText : C.text, mine ? "semibold" : "regular"); g.minimumScaleFactor = 0.8
       }
     }
   }
+  row.addSpacer()
   w.addSpacer()
 }
 
