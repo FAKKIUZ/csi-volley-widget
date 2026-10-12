@@ -1152,7 +1152,7 @@ function teamSmall(w, d) {
   w.addSpacer()
   // coppe senza altre partite: al posto di "Ultima" la sfida intera (andata e ritorno)
   const ks = !t.next && koStatus(d)
-  if (ks && ks.tie) { koTieBlock(w, ks); return }
+  if (ks && ks.tie) { koPath(w, d, INNER_SMALL, 3); return }
   if (t.last && t.next) {
     sectionLabel(w, "Ultima")
     w.addSpacer(2)
@@ -1422,7 +1422,7 @@ function panoramaSmall(w, d) {
     w.addSpacer()
   }
   const ks = !t.next && koStatus(d)
-  if (ks && ks.tie) { koTieBlock(w, ks); w.addSpacer(); return }
+  if (ks && ks.tie) { koPath(w, d, INNER_SMALL, 4); w.addSpacer(); return }
   if (t.last) { lastRow(w, t.last, false); w.addSpacer() }
   if (t.next) nextLines(w, t.next)
   else txt(w, "Nessuna in calendario", F_SUB, C.sub)
@@ -2641,21 +2641,6 @@ function koRankLarge(w, d) {
   w.addSpacer()
 }
 
-// La sfida della squadra nel suo ultimo turno: andata e ritorno su due righe (piccoli senza prossima partita)
-function koTieBlock(stack, ks) {
-  const legs = ks.tie.legs || [ks.tie]
-  const tot = ks.detail && !/^andata/.test(ks.detail) ? ` · ${ks.detail}` : ""
-  sectionLabel(stack, `${ks.round}${tot}`).minimumScaleFactor = 0.8
-  stack.addSpacer(3)
-  const box = stack.addStack(); box.layoutVertically(); box.spacing = 3
-  for (const m of legs) {
-    if (m.sets) { lastRow(box, m, false); continue }
-    const r = box.addStack(); r.centerAlignContent(); r.spacing = 4; r.url = matchUrl(m)
-    txt(r, shortWhen(m), F_SUB, C.sub, "semibold")
-    const o = txt(r, `${isMine(m.home) ? "vs" : "@"} ${opp(m)}`, F_TXT, C.text, "semibold"); o.minimumScaleFactor = 0.7
-  }
-}
-
 // Risultato di una sfida dal punto di vista della squadra: "tot. 3-1", "rig. 4-2", "andata 0-2", "1-3"
 function tieDetail(t) {
   const legs = t.legs || [t], mine = legs.filter(m => m.sets)
@@ -2669,7 +2654,7 @@ function tieDetail(t) {
 }
 
 // Il cammino della squadra in coppa: un turno per riga, con avversario ed esito (medio "La mia squadra")
-function koPath(stack, d, width) {
+function koPath(stack, d, width, maxRows) {
   const g = giornate(d), ties = koTies(d), rows = []
   for (const x of g) { const t = (ties.get(x.label) || []).find(isMyMatch); if (t) rows.push([x.label, t]) }
   if (!rows.length) return
@@ -2677,7 +2662,7 @@ function koPath(stack, d, width) {
   sectionLabel(stack, "Percorso")
   stack.addSpacer(3)
   const box = stack.addStack(); box.layoutVertically(); box.spacing = 3
-  const shown = rows.slice(-4)
+  const shown = rows.slice(-(maxRows || 4))
   // colonna del turno larga quanto l'etichetta più lunga (+ i ~8 punti che iOS tiene per lo spaziatore)
   const RW = Math.ceil(Math.max(...shown.map(([l]) => roundShort(l).length)) * 9 * 0.52) + 10
   for (const [label, t] of shown) {
@@ -2688,7 +2673,7 @@ function koPath(stack, d, width) {
     // e i nomi si tagliavano ("1° turno" e "2° turno" sono lunghi uguali, quindi restano allineati)
     cell(r, roundShort(label), RW, Font.semiboldSystemFont(9), C.sub, "left")
     const o = isMine(t.home) ? t.away : t.home
-    txt(r, ab[o] || o, F_SUB, C.text)
+    txt(r, ab[o] || o, F_SUB, C.text).minimumScaleFactor = 0.85
     r.addSpacer()
     const det = tieDetail(t), next = (t.legs || [t]).find(m => !m.sets && !m.tbd)
     const won = t.winner && isMine(t.winner), lost = t.winner && !won
