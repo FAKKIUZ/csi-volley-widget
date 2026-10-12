@@ -2499,14 +2499,15 @@ function pickRanking(list, n) {
   return i >= n ? list.slice(0, n - 1).concat(list[i]) : list.slice(0, n)
 }
 // Riga del tabellone: logo, nome e a destra il turno (arancione chi è in corsa, grigio chi è uscito)
-function koRankRow(stack, r, width, size, nameMax) {
+function koRankRow(stack, r, width, size, nameMax, names) {
   const row = stack.addStack(); row.centerAlignContent(); row.spacing = 4; row.setPadding(0, 3, 0, 3)
   if (width) row.size = new Size(width, 0)
   const mine = isMine(r.name)
   if (mine) { row.backgroundColor = C.hl; row.cornerRadius = 5 }
   logo(row, r.name, size + 3)
-  const nm = txt(row, nameMax ? compactName(r.name, nameMax) : r.name, size, mine ? C.hlText : r.alive || r.place ? C.text : C.sub, mine || r.place === 1 ? "bold" : "regular")
-  nm.minimumScaleFactor = 0.85
+  const label = names ? names[r.name] || r.name : nameMax ? compactName(r.name, nameMax) : r.name
+  // tutti i nomi della stessa grandezza: se uno è troppo lungo si accorcia con i puntini, non si rimpicciolisce
+  txt(row, label, size, mine ? C.hlText : r.alive || r.place ? C.text : C.sub, mine || r.place === 1 ? "bold" : "regular")
   row.addSpacer()
   const st = txt(row, koRankText(r), size - 1, r.place === 1 || (r.alive && !r.place) ? C.hlText : C.sub, r.alive || r.place ? "semibold" : "regular")
   st.minimumScaleFactor = 0.8
@@ -2517,7 +2518,9 @@ function koRankSmall(w, d) {
   const rows = pickRanking(koRanking(d), 5)
   const col = w.addStack(); col.layoutVertically()
   col.spacing = Math.max(2, Math.min(10, (WIDE * 0.467 - 58 - rows.length * 16) / Math.max(1, rows.length - 1)))
-  for (const r of rows) koRankRow(col, r, INNER_SMALL, F_SUB, 11)
+  // nel piccolo i nomi brevi dei risultati ("Excelsior", "Chiuduno", "Spartak")
+  const ab = shortNames(allTeams(d))
+  for (const r of rows) koRankRow(col, r, INNER_SMALL, F_SUB, 11, ab)
   w.addSpacer()
 }
 function koRankMedium(w, d) {
