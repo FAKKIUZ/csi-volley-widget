@@ -475,6 +475,14 @@ async function buildWidget(d, family, view) {
     footer(w, d)
     return w
   }
+  if (view === "ultima") {
+    if (!TEAM || !d.matches.some(isMyMatch)) return noTeamWidget(w)
+    const t = teamData(d)
+    const info = t.last && family !== "small" ? await getMatchInfo(t.last) : { events: [], prev: [] }
+    ;[lastSmall, lastMedium, lastLarge][family === "small" ? 0 : family === "medium" ? 1 : 2](w, d, t, info)
+    footer(w, d)
+    return w
+  }
   if (view === "squadra" && !myStanding(d) && !d.matches.some(isMyMatch)) return noTeamWidget(w)
   layouts[family === "small" ? 0 : family === "medium" ? 1 : 2](w, d)
   footer(w, d)
@@ -1433,6 +1441,250 @@ function dotsOnly(stack, form, size) {
   return r
 }
 
+// ───────────────────────── vista "ultima": l'ultima partita della squadra ─────────────────────────
+
+// Pagina della partita sul sito CSI: cronaca (calcio: gol, ammonizioni, fine tempo) e precedenti.
+// Si scarica solo per i widget "ultima"; senza rete si usa l'ultima copia salvata.
+async function getMatchInfo(m) {
+  const fm = FileManager.local()
+  const p = fm.joinPath(fm.cacheDirectory(), `csi-gara-${m.code}.json`)
+  try {
+    const info = parseMatchPage(await fetchHTML(m.href), m)
+    fm.writeString(p, JSON.stringify(info))
+    return info
+  } catch (e) {
+    try { if (fm.fileExists(p)) return JSON.parse(fm.readString(p)) } catch (x) {}
+    return { events: [], prev: [] }
+  }
+}
+
+function parseMatchPage(html, m) {
+  // cronaca: righe "event-row" e intestazioni "event-header" (dalla più recente alla più vecchia)
+  const out = { events: [], prev: [] }
+  const tl = (html.split(/Card timing/i)[1] || "").split(/classifica_unico_girone|Storico gare/i)[0]
+  const list = []
+  for (const c of tl.split(/(?=<div class="event-(?:row|header)")/i).slice(1)) {
+    if (/^<div class="event-header"/i.test(c)) { list.push({ type: "fine", text: strip(c) }); continue }
+    const det = (c.match(/<div class="event-details([^"]*)">([\s\S]*?)<\/div>/i) || [])
+    const side = /left/.test(det[1] || "") ? "home" : /right/.test(det[1] || "") ? "away" : ""
+    const inner = det[2] || ""
+    const score = strip((inner.match(/<h6[^>]*>([\s\S]*?)<\/h6>/i) || [])[1] || "").replace(/\s+/g, "")
+    const num = ((inner.match(/<sup[^>]*>([\s\S]*?)<\/sup>/i) || [])[1] || "").replace(/\D/g, "")
+    const name = strip(inner.replace(/<h6[\s\S]*?<\/h6>|<sup[\s\S]*?<\/sup>/gi, ""))
+    const min = parseInt(strip((c.match(/<div class="event-time">([\s\S]*?)<\/div>/i) || [])[1] || "")) || 0
+    const icon = (c.match(/<div class="event-icon">([\s\S]*?)<\/div>/i) || [])[1] || ""
+    const type = /futbol/i.test(icon) ? "gol" : /rectangle/i.test(icon) ? (/danger/i.test(icon) ? "rosso" : "giallo") : "altro"
+    list.push({ type, side, min, score, name, num })
+  }
+  // in ordine di tempo: dal fondo verso l'alto; "Fine primo tempo" separa i due tempi
+  let half = 1, last = "0-0"
+  for (const e of list.reverse()) {
+    if (e.type === "fine") {
+      if (/primo tempo/i.test(e.text)) { out.events.push({ type: "fine", text: "Fine 1° tempo", score: last }); half = 2 }
+      continue
+    }
+    if (e.type === "gol" && e.score) last = e.score
+    out.events.push(Object.assign(e, { half }))
+  }
+  // precedenti tra le due squadre (anche stagioni passate), esclusa questa partita
+  const st = (html.split(/Storico gare/i)[1] || "").split(/hero-campionato/i)[0]
+  let season = ""
+  for (const c of st.split(/(?=<label>|<a\b)/i)) {
+    if (/^<label>/i.test(c)) { season = strip(c.match(/<label>([\s\S]*?)<\/label>/i)[1]); continue }
+    if (!/btn-gara/i.test(c)) continue
+    const code = (c.match(/\((\d{7}[A-Z]{1,3}\d{3,})\)/) || [])[1] || ""
+    if (code && m.code.endsWith(code)) continue
+    const names = [...c.matchAll(/class="nome-squadra">([\s\S]*?)<\/span>/gi)].map(x => strip(x[1]))
+    const dm = strip(c).match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s+(\d{1,2})[:.](\d{2})/)
+    if (names.length < 2 || !dm) continue
+    let y = +dm[3]; if (y < 100) y += 2000
+    const fin = c.slice(c.lastIndexOf('class="vr"'))
+    const nums = (strip(fin).match(/\d+/g) || []).map(Number)
+    out.prev.push({ season, ts: new Date(y, +dm[2] - 1, +dm[1], +dm[4], +dm[5]).getTime(), home: names[0], away: names[1], sets: nums.length >= 2 ? nums.slice(-2) : null })
+  }
+  out.prev.sort((a, b) => b.ts - a.ts)
+  return out
+}
+
+// testo di un evento della cronaca: "⚽︎ 1-1 Rossi M." · "🟨 Pezzotti A. (7)"
+function eventText(e) {
+  const who = e.name ? `${e.name}${e.num ? ` (${e.num})` : ""}` : ""
+  if (e.type === "gol") return [`⚽︎ ${e.score}`, who].filter(Boolean).join("  ")
+  if (e.type === "giallo") return `🟨 ${who}`
+  if (e.type === "rosso") return `🟥 ${who}`
+  return who
+}
+function minText(e) { return e.min ? `${e.half === 2 ? "2T " : ""}${e.min}'` : "" }
+
+// tabellone: stemma · punteggio · stemma, nomi sotto
+function lastScoreboard(stack, m, logoSize, scoreSize, nameSize, width) {
+  const box = stack.addStack(); box.layoutVertically(); box.spacing = 3
+  if (width) box.size = new Size(width, 0)
+  const top = box.addStack(); top.centerAlignContent()
+  const half = width ? Math.floor((width - scoreSize * 3.2) / 2) : 0
+  const side = (name, mine) => {
+    const s = top.addStack(); s.layoutVertically(); s.centerAlignContent(); s.spacing = 3
+    if (half) s.size = new Size(half, 0)
+    const l = s.addStack(); l.addSpacer(); logo(l, name, logoSize); l.addSpacer()
+    const n = s.addStack(); n.addSpacer()
+    const t = txt(n, name, nameSize, mine ? C.hlText : C.text, mine ? "bold" : "semibold"); t.minimumScaleFactor = 0.75; t.centerAlignText()
+    n.addSpacer()
+  }
+  side(m.home, isMine(m.home))
+  const sc = top.addStack(); sc.centerAlignContent()
+  if (width) sc.size = new Size(width - 2 * half, 0)
+  const s = txt(sc, `${m.sets[0]} - ${m.sets[1]}`, scoreSize, m.ufficioso ? C.uff : C.text, "bold")
+  s.font = Font.boldRoundedSystemFont(scoreSize)
+  side(m.away, isMine(m.away))
+  return box
+}
+
+function noLastWidget(w, d, compact) {
+  header(w, d, "Ultima partita", compact, !compact)
+  w.addSpacer()
+  txt(w, "Nessuna partita giocata", F_TXT, C.sub)
+  w.addSpacer()
+}
+
+function lastSmall(w, d, t) {
+  const m = t.last
+  if (!m) return noLastWidget(w, d, true)
+  w.url = m.href
+  header(w, d, "Ultima partita", true)
+  w.addSpacer()
+  lastScoreboard(w, m, 28, 20, 9.5, INNER_SMALL)
+  w.addSpacer()
+  const b = w.addStack(); b.centerAlignContent(); b.spacing = 5
+  b.addSpacer()
+  const rs = res(m), chip = b.addStack(); chip.setPadding(1, 4, 1, 4); chip.cornerRadius = 4; chip.backgroundColor = resColor(rs)
+  const ct = chip.addText(rs); ct.font = Font.boldRoundedSystemFont(F_SUB); ct.textColor = Color.white()
+  txt(b, `${dayName(m.ts)} ${fmtDate(m.ts)}${m.ufficioso ? " · ufficioso" : ""}`, F_SUB, m.ufficioso ? C.uff : C.sub)
+  b.addSpacer()
+}
+
+function lastMedium(w, d, t, info) {
+  const m = t.last
+  if (!m) return noLastWidget(w, d, true)
+  w.url = m.href
+  header(w, d, "Ultima partita", true)
+  w.addSpacer()
+  const row = w.addStack(); row.centerAlignContent(); row.spacing = 10
+  const leftW = Math.round(MED.w * 0.5)
+  const l = row.addStack(); l.layoutVertically(); l.spacing = 4; l.size = new Size(leftW, 0)
+  lastScoreboard(l, m, 26, 18, F_SUB, leftW)
+  const when = l.addStack(); when.addSpacer()
+  const v = venueOf(d, m)
+  txt(when, `${dayName(m.ts)} ${fmtDate(m.ts)}${v ? " · " + (venueCity(v) || venueName(v)) : ""}`, 9, m.ufficioso ? C.uff : C.sub).minimumScaleFactor = 0.8
+  when.addSpacer()
+  const sep = row.addStack(); sep.size = new Size(1, MED.h - 44); sep.backgroundColor = C.chip
+  const r = row.addStack(); r.layoutVertically(); r.spacing = 2
+  if (!CALCIO) {
+    sectionLabel(r, "Set")
+    m.parziali.forEach((p, i) => {
+      const s = r.addStack(); s.centerAlignContent(); s.spacing = 6
+      txt(s, `${i + 1}°`, 9, C.sub, "semibold")
+      const hw = p[0] > p[1]
+      const a = txt(s, p[0], F_TXT, hw ? C.text : C.sub, hw ? "bold" : "regular")
+      txt(s, "-", F_TXT, C.sub)
+      txt(s, p[1], F_TXT, hw ? C.sub : C.text, hw ? "regular" : "bold")
+    })
+    if (!m.parziali.length) txt(r, "—", F_TXT, C.sub)
+  } else {
+    sectionLabel(r, "Gol")
+    const goals = info.events.filter(e => e.type === "gol")
+    if (!goals.length) txt(r, info.events.length ? "nessun gol" : "cronaca non disponibile", F_SUB, C.sub)
+    // fino a 6 righe; se i gol sono di più, due per riga
+    const per = goals.length > 6 ? 2 : 1
+    for (let i = 0; i < goals.length && i < 12; i += per) {
+      const s = r.addStack(); s.centerAlignContent(); s.spacing = 6
+      for (const e of goals.slice(i, i + per)) {
+        txt(s, minText(e), 9, C.sub, "semibold")
+        const who = e.name || (e.side === "home" ? m.home : m.away)
+        const mine = isMine(e.side === "home" ? m.home : m.away)
+        const g = txt(s, `${e.score}${per === 1 ? "  " + who : ""}`, F_SUB, mine ? C.hlText : C.text, mine ? "semibold" : "regular"); g.minimumScaleFactor = 0.8
+      }
+    }
+  }
+}
+
+function lastLarge(w, d, t, info) {
+  const m = t.last
+  if (!m) return noLastWidget(w, d, false)
+  w.url = m.href
+  header(w, d, "Ultima partita", false, true)
+  w.addSpacer(8)
+  // scheda della partita
+  const box = w.addStack(); box.layoutVertically(); box.spacing = 4
+  box.size = new Size(LRG.w, 0); box.setPadding(8, 10, 8, 10); box.cornerRadius = 12; box.backgroundColor = C.stripe
+  lastScoreboard(box, m, 36, 26, F_TXT, LRG.w - 20)
+  const v = venueOf(d, m)
+  const l1 = box.addStack(); l1.addSpacer()
+  // risultato non omologato: punteggio in rosso e "ufficioso" in fondo alla riga della data
+  txt(l1, `${prettyGiornata(m.giornata)} · ${dayName(m.ts)} ${fmtDate(m.ts)} · ${fmtTime(m.ts)}${m.ufficioso ? " · ufficioso" : ""}`, F_SUB, m.ufficioso ? C.uff : C.sub).minimumScaleFactor = 0.8
+  l1.addSpacer()
+  if (v) { const l2 = box.addStack(); l2.url = mapsUrl(v); l2.addSpacer(); txt(l2, venueShort(v), 9, C.sub).minimumScaleFactor = 0.8; l2.addSpacer() }
+  let avail = LRG.h - 30 - 8 - 92 - (v ? 12 : 0)
+  const prev = info.prev.slice(0, CALCIO && info.events.length > 6 ? 2 : 3)
+  const prevH = prev.length ? 14 + 4 + prev.length * 21 + 10 : 0
+  w.addSpacer(10)
+  if (!CALCIO) {
+    sectionLabel(w, "Set"); w.addSpacer(4)
+    const tb = w.addStack(); tb.layoutVertically(); tb.spacing = 2
+    const n = m.parziali.length, nameW = 120, cw = Math.floor((LRG.w - nameW - 12) / 5)
+    const head = tb.addStack(); head.setPadding(0, 6, 0, 6); head.addSpacer(nameW)
+    for (let i = 0; i < n; i++) cell(head, `S${i + 1}`, cw, Font.semiboldSystemFont(9), C.sub, "center")
+    ;[0, 1].forEach(sd => {
+      const name = sd ? m.away : m.home
+      const rw = tb.addStack(); rw.centerAlignContent(); rw.setPadding(3, 6, 3, 6); rw.cornerRadius = 7
+      rw.backgroundColor = isMine(name) ? C.hl : C.stripe
+      const nc = rw.addStack(); nc.size = new Size(nameW, 0); nc.centerAlignContent(); nc.spacing = 5
+      logo(nc, name, 14)
+      const t1 = txt(nc, name, F_TXT, isMine(name) ? C.hlText : C.text, isMine(name) ? "bold" : "regular"); t1.minimumScaleFactor = 0.8
+      nc.addSpacer()
+      m.parziali.forEach(p => { const won = p[sd] > p[1 - sd]; cell(rw, p[sd], cw, won ? Font.boldRoundedSystemFont(F_TXT) : Font.systemFont(F_TXT), won ? C.text : C.sub, "center") })
+    })
+  } else {
+    sectionLabel(w, "Cronaca"); w.addSpacer(4)
+    let ev = info.events
+    if (!ev.length) txt(w, "Cronaca non disponibile", F_SUB, C.sub)
+    const rows = Math.max(2, Math.floor((avail - 10 - 18 - prevH) / 17))
+    // troppi eventi: prima si tolgono le ammonizioni, poi la riga di fine tempo; i gol restano sempre,
+    // e solo se non bastano ancora si tengono gli ultimi
+    if (ev.length > rows) ev = ev.filter(e => e.type !== "giallo")
+    if (ev.length > rows) ev = ev.filter(e => e.type !== "fine")
+    if (ev.length > rows) ev = ev.slice(-rows)
+    const list = w.addStack(); list.layoutVertically(); list.spacing = 2
+    const half = Math.floor((LRG.w - 44) / 2)
+    for (const e of ev) {
+      const rw = list.addStack(); rw.centerAlignContent(); rw.setPadding(1, 6, 1, 6); rw.cornerRadius = 6
+      if (e.type === "fine") {
+        rw.addSpacer(); txt(rw, `${e.text.toUpperCase()} · ${e.score}`, 9, C.sub, "semibold"); rw.addSpacer(); continue
+      }
+      const mine = isMine(e.side === "home" ? m.home : m.away)
+      rw.backgroundColor = e.type === "gol" && mine ? C.hl : C.stripe
+      const L = rw.addStack(); L.size = new Size(half, 0); L.centerAlignContent(); L.addSpacer()
+      if (e.side === "home") txt(L, eventText(e), F_SUB, mine && e.type === "gol" ? C.hlText : C.text, e.type === "gol" ? "semibold" : "regular").minimumScaleFactor = 0.8
+      cell(rw, minText(e), 32, Font.semiboldRoundedSystemFont(9), C.sub, "center")
+      const R = rw.addStack(); R.size = new Size(half, 0); R.centerAlignContent()
+      if (e.side === "away") txt(R, eventText(e), F_SUB, mine && e.type === "gol" ? C.hlText : C.text, e.type === "gol" ? "semibold" : "regular").minimumScaleFactor = 0.8
+      R.addSpacer()
+    }
+  }
+  w.addSpacer()
+  if (prev.length) {
+    sectionLabel(w, "Precedenti"); w.addSpacer(4)
+    const pl = w.addStack(); pl.layoutVertically(); pl.spacing = 2
+    for (const p of prev) {
+      const rw = pl.addStack(); rw.centerAlignContent(); rw.spacing = 5; rw.setPadding(2, 6, 2, 6); rw.cornerRadius = 6; rw.backgroundColor = C.stripe
+      cell(rw, fmtDate(p.ts) + "/" + String(new Date(p.ts).getFullYear()).slice(2), 52, Font.systemFont(9), C.sub, "left")
+      const hw = p.sets && p.sets[0] > p.sets[1], aw = p.sets && p.sets[1] > p.sets[0]
+      cell(rw, p.home, "flex", hw ? Font.semiboldSystemFont(F_SUB) : Font.systemFont(F_SUB), isMine(p.home) ? C.hlText : C.text, "right")
+      cell(rw, p.sets ? `${p.sets[0]} - ${p.sets[1]}` : "–", 38, Font.boldRoundedSystemFont(F_SUB), C.text, "center")
+      cell(rw, p.away, "flex", aw ? Font.semiboldSystemFont(F_SUB) : Font.systemFont(F_SUB), isMine(p.away) ? C.hlText : C.text, "left")
+    }
+  }
+}
+
 // ───────────────────────── widget a tutta pagina ─────────────────────────
 
 // Panoramica: squadra + classifica + giornata. Su iPad in due colonne, su iPhone una sotto l'altra.
@@ -1798,6 +2050,7 @@ async function appMenu(d, e) {
     ["Risultati · piccolo", "risultati", "small"], ["Risultati · medio", "risultati", "medium"], ["Risultati · grande", "risultati", "large"],
     ["Squadra · piccolo", "squadra", "small"], ["Squadra · medio", "squadra", "medium"], ["Squadra · grande", "squadra", "large"],
     ["Panoramica · piccolo", "panoramica", "small"], ["Panoramica · medio", "panoramica", "medium"], ["Panoramica · grande", "panoramica", "large"],
+    ["Ultima partita · piccolo", "ultima", "small"], ["Ultima partita · medio", "ultima", "medium"], ["Ultima partita · grande", "ultima", "large"],
   ]
   if (Device.isPad()) opts.push(["Panoramica · tutta pagina", "", "extraLarge"])
   opts.forEach(o => a.addAction(o[0]))
@@ -1927,7 +2180,7 @@ function parseParams(str) {
     const kv = v.match(/^([a-z]+)\s*[=:]\s*(.+)$/i)
     if (link) p.url = link[0]
     else if (kv && KEYS[kv[1].toLowerCase()]) p[KEYS[kv[1].toLowerCase()]] = kv[2].trim()
-    else if (/^(classifica|risultati|squadra|panoramica)$/i.test(v)) p.vista = v.toLowerCase()
+    else if (/^(classifica|risultati|squadra|panoramica|ultima)$/i.test(v)) p.vista = v.toLowerCase()
     else if (/^semplice$/i.test(v)) { p.parziali = "no"; p.prossima = "no" }
     else if (/^diagnosi$/i.test(v)) p.vista = "diagnosi"
     else p.squadra = v
