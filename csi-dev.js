@@ -1168,7 +1168,8 @@ function teamMedium(w, d) {
   // due colonne alte quanto il widget: gli spazi flessibili distribuiscono i blocchi su tutta l'altezza
   // margini laterali di 11 invece di 14 e stacco di 8 attorno alla linea: le colonne guadagnano ~5 punti
   w.setPadding(12, 11, 12, 11)
-  const W = MED.w + 6, H = MED.h - 2
+  // con la riga rossa "dati delle…" in fondo le colonne sono un po' più basse, così non ci finiscono sopra
+  const W = MED.w + 6, H = MED.h - 2 - (d.fromCache ? 12 : 0)
   const row = w.addStack(); row.topAlignContent(); row.spacing = 8; row.size = new Size(W, H)
   const leftW = Math.round((W - 17) / 2), rightW = W - 17 - leftW
 
@@ -1469,7 +1470,8 @@ function panoramaMedium(w, d) {
   const t = teamData(d)
   // margini laterali di 11 invece di 14 e stacco di 8 attorno alla linea: le colonne guadagnano ~5 punti
   w.setPadding(12, 11, 12, 11)
-  const W = MED.w + 6, H = MED.h - 2
+  // con la riga rossa "dati delle…" in fondo le colonne sono un po' più basse, così non ci finiscono sopra
+  const W = MED.w + 6, H = MED.h - 2 - (d.fromCache ? 12 : 0)
   const row = w.addStack(); row.topAlignContent(); row.spacing = 8; row.size = new Size(W, H)
   const leftW = Math.round((W - 17) / 2), rightW = W - 17 - leftW
 
@@ -2677,7 +2679,7 @@ function koPath(stack, d, width) {
   const box = stack.addStack(); box.layoutVertically(); box.spacing = 3
   const shown = rows.slice(-4)
   // colonna del turno larga quanto l'etichetta più lunga (+ i ~8 punti che iOS tiene per lo spaziatore)
-  const RW = Math.ceil(Math.max(...shown.map(([l]) => roundShort(l).length)) * 9 * 0.56) + 10
+  const RW = Math.ceil(Math.max(...shown.map(([l]) => roundShort(l).length)) * 9 * 0.52) + 10
   for (const [label, t] of shown) {
     const r = box.addStack(); r.centerAlignContent(); r.spacing = 4; r.size = new Size(width, 0)
     r.url = matchUrl(t.legs ? t.legs[t.legs.length - 1] : t)
