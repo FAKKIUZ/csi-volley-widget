@@ -949,7 +949,13 @@ function venueOf(d, m) {
   return home
 }
 function titleCase(s) { return String(s || "").toLowerCase().replace(/(^|[\s.,/'-])([a-zà-ù])/g, (a, b, c) => b + c.toUpperCase()) }
-function venueCity(v) { const m = v.match(/\b\d{5}\s+(.+)$/); return m ? m[1].trim() : "" }
+function venueCity(v) {
+  const m = v.match(/\b\d{5}\s+(.+)$/)
+  if (m) return m[1].trim()
+  // senza CAP (campo scritto sulla partita): il paese dopo il numero civico ("Via Scirea. 1 Telgate" → "Telgate")
+  const n = v.match(/\b(?:Via|Viale|V\.le|Piazza|P\.zza|Piazzale|Corso|C\.so|Strada)\b.*?\s\d+[a-z]?\s*,?\s+([A-ZÀ-Ý][^\d,]*)$/)
+  return n ? n[1].trim() : ""
+}
 function venueName(v) { return v.split(/\s+(?=(?:Via|Viale|V\.le|Piazza|P\.zza|Piazzale|Corso|C\.so|Loc\.|Localit[aà]|Strada|Vicolo)\b)/i)[0].trim() }
 function venueShort(v) { const n = venueName(v), c = venueCity(v); return c && !n.includes(c) ? `${n} · ${c}` : n }
 // Percorso con l'app di navigazione predefinita di iPhone (Impostazioni → App → App predefinite → Navigazione).
@@ -1131,8 +1137,7 @@ function teamMedium(w, d) {
   smallTeamTop(l, d, t)
   l.addSpacer()
   if (t.me) { txt(l, statLine(t.me), F_SUB, C.sub).minimumScaleFactor = 0.85; l.addSpacer(4) }
-  const ks = !t.me && koStatus(d)
-  if (ks && ks.detail) { txt(l, `${ks.round} · ${ks.detail}`, F_SUB, C.sub).minimumScaleFactor = 0.8; l.addSpacer(4) }
+  if (d.ko) { koPath(l, d, leftW); l.addSpacer() }
   const fr = l.addStack(); fr.centerAlignContent(); fr.spacing = 6
   txt(fr, "FORMA", 9, C.sub, "semibold"); dotsOnly(fr, t.form, 9)
   if (t.me && d.standings.length > 2) { l.addSpacer(); miniTable(l, d, t.me) }
@@ -2456,13 +2461,7 @@ function koStatus(d) {
     const name = roundTitle(g[i].label), pl = /^finale\s+(\d)°\s*-\s*(\d)°/i.exec(g[i].label)
     const legs = t.legs || [t], mine = legs.filter(m => m.sets)
     const my = m => isMine(m.home) ? m.sets : [m.sets[1], m.sets[0]]
-    let detail = ""
-    if (legs.length > 1 && mine.length) {
-      const dcr = mine.find(m => m.dcr)
-      if (dcr) detail = `rig. ${my(dcr).join("-")}`
-      else if (mine.length === 1) detail = `andata ${my(mine[0]).join("-")}`
-      else detail = `tot. ${mine.reduce((s, m) => [s[0] + my(m)[0], s[1] + my(m)[1]], [0, 0]).join("-")}`
-    }
+    const detail = legs.length > 1 ? tieDetail(t) : ""
     if (!t.winner) return { text: name, detail, state: "open", round: name, tie: t }
     if (isMine(t.winner)) return { text: pl ? (pl[1] === "1" ? "Vincitrice" : `${pl[1]}° posto`) : "Qualificata", detail, state: "won", round: name, tie: t }
     return { text: pl ? `${pl[2]}° posto` : `Eliminata · ${name}`, detail, state: "out", round: name, tie: t }
@@ -2561,6 +2560,41 @@ function koTieBlock(stack, ks) {
     const r = box.addStack(); r.centerAlignContent(); r.spacing = 4; r.url = matchUrl(m)
     txt(r, shortWhen(m), F_SUB, C.sub, "semibold")
     const o = txt(r, `${isMine(m.home) ? "vs" : "@"} ${opp(m)}`, F_TXT, C.text, "semibold"); o.minimumScaleFactor = 0.7
+  }
+}
+
+// Risultato di una sfida dal punto di vista della squadra: "tot. 3-1", "rig. 4-2", "andata 0-2", "1-3"
+function tieDetail(t) {
+  const legs = t.legs || [t], mine = legs.filter(m => m.sets)
+  const my = m => isMine(m.home) ? m.sets : [m.sets[1], m.sets[0]]
+  if (!mine.length) return ""
+  if (legs.length === 1) return `${my(mine[0]).join("-")}${mine[0].dcr ? " rig." : ""}`
+  const dcr = mine.find(m => m.dcr)
+  if (dcr) return `rig. ${my(dcr).join("-")}`
+  if (mine.length === 1) return `andata ${my(mine[0]).join("-")}`
+  return `tot. ${mine.reduce((s, m) => [s[0] + my(m)[0], s[1] + my(m)[1]], [0, 0]).join("-")}`
+}
+
+// Il cammino della squadra in coppa: un turno per riga, con avversario ed esito (medio "La mia squadra")
+function koPath(stack, d, width) {
+  const g = giornate(d), ties = koTies(d), rows = []
+  for (const x of g) { const t = (ties.get(x.label) || []).find(isMyMatch); if (t) rows.push([x.label, t]) }
+  if (!rows.length) return
+  sectionLabel(stack, "Percorso")
+  stack.addSpacer(3)
+  const box = stack.addStack(); box.layoutVertically(); box.spacing = 3
+  for (const [label, t] of rows.slice(-4)) {
+    const r = box.addStack(); r.centerAlignContent(); r.spacing = 4; r.size = new Size(width, 0)
+    r.url = matchUrl(t.legs ? t.legs[t.legs.length - 1] : t)
+    cell(r, roundShort(label), 50, Font.semiboldSystemFont(9), C.sub, "left")
+    const o = isMine(t.home) ? t.away : t.home
+    logo(r, o, 12)
+    const n = txt(r, compactName(o, 11, true), F_SUB, C.text); n.minimumScaleFactor = 0.85
+    r.addSpacer()
+    const det = tieDetail(t), next = (t.legs || [t]).find(m => !m.sets && !m.tbd)
+    const won = t.winner && isMine(t.winner), lost = t.winner && !won
+    const right = det && !/^andata/.test(det) ? det.replace(/^tot\. /, "") : next ? shortWhen(next) : det
+    txt(r, right || "–", F_SUB - 0.5, won ? C.win : lost ? C.lose : C.sub, "semibold")
   }
 }
 
