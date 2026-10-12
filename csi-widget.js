@@ -33,10 +33,12 @@ const CALCIO = /\/calcio/i.test(URL_GIRONE)
 const ICON = CALCIO ? "⚽️" : "🏐"
 
 const C = {
-  bg:     Color.dynamic(new Color("#F4F6FA"), new Color("#0D1320")),
+  // sfondo con una tinta appena accennata per sport: caldo per la pallavolo, verde per il calcio
+  bg:     CALCIO ? Color.dynamic(new Color("#F2F7F3"), new Color("#0C1614")) : Color.dynamic(new Color("#F8F5F0"), new Color("#15131B")),
   text:   Color.dynamic(new Color("#0F172A"), new Color("#F1F5F9")),
   sub:    Color.dynamic(new Color("#64748B"), new Color("#8B9AB0")),
-  stripe: Color.dynamic(new Color("#FFFFFF"), new Color("#162033")),
+  // righe e schede: bianche in chiaro; in scuro con la stessa tinta dello sfondo
+  stripe: Color.dynamic(new Color("#FFFFFF"), new Color(CALCIO ? "#15241F" : "#211E2A")),
   chip:   Color.dynamic(new Color("#E3E9F4"), new Color("#1E2B42")),
   accent: new Color("#F5A524"),
   accentSoft: Color.dynamic(new Color("#FDE9C4"), new Color("#3A2A08")),
