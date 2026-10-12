@@ -482,14 +482,13 @@ async function buildWidget(d, family, view) {
     squadra: [teamSmall, teamMedium, teamLarge],
   }[view] || [standingsSmall, standingsMedium, standingsLarge]
   // coppe e fasi finali: niente classifica, al suo posto il tabellone del turno
-  const KO_RES = [resultsSmall, resultsMedium, resultsLarge]
-  if (d.ko && layouts[0] === standingsSmall) layouts.splice(0, 3, ...KO_RES)
+  if (d.ko && layouts[0] === standingsSmall) layouts.splice(0, 3, koRankSmall, koRankMedium, koRankLarge)
   // formati oltre il grande (extra large su iPad, verticale alto di iOS 27…): panoramica
   if (!["small", "medium", "large"].includes(family)) { dashboard(w, d); footer(w, d); return w }
   if (view === "panoramica") {
     // senza squadra la panoramica piccola e media ripiegano sulla classifica
     const noTeam = !TEAM || (!myStanding(d) && !d.matches.some(isMyMatch))
-    const fs = noTeam ? (d.ko ? [resultsSmall, resultsMedium, panoramaLarge] : [standingsSmall, standingsMedium, panoramaLarge]) : [panoramaSmall, panoramaMedium, panoramaLarge]
+    const fs = noTeam ? (d.ko ? [koRankSmall, koRankMedium, panoramaLarge] : [standingsSmall, standingsMedium, panoramaLarge]) : [panoramaSmall, panoramaMedium, panoramaLarge]
     fs[family === "small" ? 0 : family === "medium" ? 1 : 2](w, d)
     footer(w, d)
     return w
@@ -649,7 +648,7 @@ function roundRowSmall(stack, m, ab, width) {
   r.backgroundColor = isMyMatch(m) ? C.hl : C.stripe
   const hw = m.sets && m.sets[0] > m.sets[1], aw = m.sets && m.sets[1] > m.sets[0]
   // i due lati hanno la stessa larghezza fissa, così il punteggio resta sempre centrato
-  const CHIP = m.chipLines ? 34 : 30, SIDE = Math.floor(((width || INNER_SMALL) - 6 - CHIP - 4) / 2)
+  const CHIP = 30, SIDE = Math.floor(((width || INNER_SMALL) - 6 - CHIP - 4) / 2)
   const side = (name, win, lose, isHome) => {
     const sd = r.addStack(); sd.size = new Size(SIDE, 0); sd.centerAlignContent(); sd.spacing = 3
     const mine = isMine(name)
@@ -671,7 +670,7 @@ function roundRowSmall(stack, m, ab, width) {
     c.layoutVertically()
     for (const l of m.chipLines) {
       const lr = c.addStack(); lr.size = new Size(CHIP, 0); lr.centerAlignContent()
-      const lt = lr.addText(l); lt.font = /^\d+-\d+$|^r /.test(l) ? Font.boldRoundedSystemFont(8.5) : Font.mediumSystemFont(8)
+      const lt = lr.addText(l); lt.font = /^\d+-\d+$|^r /.test(l) ? Font.boldRoundedSystemFont(8) : Font.mediumSystemFont(7.5)
       lt.textColor = /^\d+-\d+$|^r /.test(l) ? (m.ufficioso ? C.uff : C.text) : C.sub; lt.lineLimit = 1; lt.minimumScaleFactor = 0.75
     }
     side(m.away, aw, hw, false)
@@ -1105,6 +1104,9 @@ function teamSmall(w, d) {
   txt(fr, "FORMA", 9, C.sub, "semibold")
   dotsOnly(fr, t.form, 9)
   w.addSpacer()
+  // coppe senza altre partite: al posto di "Ultima" la sfida intera (andata e ritorno)
+  const ks = !t.next && koStatus(d)
+  if (ks && ks.tie) { koTieBlock(w, ks); return }
   if (t.last && t.next) {
     sectionLabel(w, "Ultima")
     w.addSpacer(2)
@@ -1349,6 +1351,8 @@ function panoramaSmall(w, d) {
     for (const x of rows) panoStandingRow(col, x, ns)
     w.addSpacer()
   }
+  const ks = !t.next && koStatus(d)
+  if (ks && ks.tie) { koTieBlock(w, ks); w.addSpacer(); return }
   if (t.last) { lastRow(w, t.last, false); w.addSpacer() }
   if (t.next) nextLines(w, t.next)
   else txt(w, "Nessuna in calendario", F_SUB, C.sub)
@@ -2459,12 +2463,104 @@ function koStatus(d) {
       else if (mine.length === 1) detail = `andata ${my(mine[0]).join("-")}`
       else detail = `tot. ${mine.reduce((s, m) => [s[0] + my(m)[0], s[1] + my(m)[1]], [0, 0]).join("-")}`
     }
-    if (!t.winner) return { text: name, detail, state: "open", round: name }
-    if (isMine(t.winner)) return { text: pl ? (pl[1] === "1" ? "Vincitrice" : `${pl[1]}° posto`) : "Qualificata", detail, state: "won", round: name }
-    return { text: pl ? `${pl[2]}° posto` : `Eliminata · ${name}`, detail, state: "out", round: name }
+    if (!t.winner) return { text: name, detail, state: "open", round: name, tie: t }
+    if (isMine(t.winner)) return { text: pl ? (pl[1] === "1" ? "Vincitrice" : `${pl[1]}° posto`) : "Qualificata", detail, state: "won", round: name, tie: t }
+    return { text: pl ? `${pl[2]}° posto` : `Eliminata · ${name}`, detail, state: "out", round: name, tie: t }
   }
   return null
 }
+// Dove è arrivata ogni squadra: prima i piazzamenti delle finali, poi le squadre ancora in corsa
+// (dal turno più avanti), poi le eliminate (dal turno più avanti). A pari turno, l'ordine del sito.
+function koRanking(d) {
+  const g = giornate(d), ties = koTies(d), teams = new Map()
+  g.forEach((x, gi) => {
+    const pl = /^finale\s+(\d)°\s*-\s*(\d)°/i.exec(x.label)
+    for (const t of ties.get(x.label) || []) for (const n of [t.home, t.away]) {
+      const lost = !!t.winner && t.winner !== n
+      const r = { name: n, gi, label: x.label, alive: !lost, won: t.winner === n && !pl, order: teams.has(n) ? teams.get(n).order : teams.size }
+      if (pl && t.winner) r.place = +(lost ? pl[2] : pl[1])
+      teams.set(n, r)
+    }
+  })
+  // chi ha vinto la sfida ma non ha ancora l'avversario del turno dopo: "Qualificata", subito dopo chi gioca già quel turno
+  const key = r => r.place ? 1e6 - r.place : r.won ? r.gi * 2 + 2.5 : r.gi * 2 + (r.alive ? 1 : 0)
+  return [...teams.values()].sort((a, b) => key(b) - key(a) || a.order - b.order)
+}
+// "Primo turno" → "1° turno", "Semifinali" → "Semifinale"; i piazzamenti: "🏆", "2°"
+function roundShort(label) {
+  const n = { primo: 1, secondo: 2, terzo: 3, quarto: 4, quinto: 5 }
+  const t = roundTitle(label), m = t.match(/^(primo|secondo|terzo|quarto|quinto)\s+turno$/i)
+  if (m) return `${n[m[1].toLowerCase()]}° turno`
+  return t.replace(/^Semifinali$/i, "Semifinale").replace(/^Finale \d° posto$/i, "Finale")
+}
+function koRankText(r) { return r.place ? (r.place === 1 ? "🏆" : `${r.place}°`) : r.won ? "Qualificata" : roundShort(r.label) }
+function pickRanking(list, n) {
+  const i = list.findIndex(r => isMine(r.name))
+  return i >= n ? list.slice(0, n - 1).concat(list[i]) : list.slice(0, n)
+}
+// Riga del tabellone: logo, nome e a destra il turno (arancione chi è in corsa, grigio chi è uscito)
+function koRankRow(stack, r, width, size, nameMax) {
+  const row = stack.addStack(); row.centerAlignContent(); row.spacing = 4; row.setPadding(0, 3, 0, 3)
+  if (width) row.size = new Size(width, 0)
+  const mine = isMine(r.name)
+  if (mine) { row.backgroundColor = C.hl; row.cornerRadius = 5 }
+  logo(row, r.name, size + 3)
+  const nm = txt(row, nameMax ? compactName(r.name, nameMax) : r.name, size, mine ? C.hlText : r.alive || r.place ? C.text : C.sub, mine || r.place === 1 ? "bold" : "regular")
+  nm.minimumScaleFactor = 0.85
+  row.addSpacer()
+  const st = txt(row, koRankText(r), size - 1, r.place === 1 || (r.alive && !r.place) ? C.hlText : C.sub, r.alive || r.place ? "semibold" : "regular")
+  st.minimumScaleFactor = 0.8
+}
+function koRankSmall(w, d) {
+  header(w, d, "Tabellone", true)
+  w.addSpacer(6)
+  const rows = pickRanking(koRanking(d), 5)
+  const col = w.addStack(); col.layoutVertically()
+  col.spacing = Math.max(2, Math.min(10, (WIDE * 0.467 - 58 - rows.length * 16) / Math.max(1, rows.length - 1)))
+  for (const r of rows) koRankRow(col, r, INNER_SMALL, F_SUB, 11)
+  w.addSpacer()
+}
+function koRankMedium(w, d) {
+  header(w, d, "Tabellone", true)
+  w.addSpacer()
+  const s = pickRanking(koRanking(d), 12), per = Math.ceil(s.length / 2)
+  const row = w.addStack(); row.topAlignContent(); row.spacing = 12
+  const gap = Math.max(1, Math.min(10, (MED.h - 30 - per * 14) / Math.max(1, per - 1)))
+  for (const part of [s.slice(0, per), s.slice(per)]) {
+    const c = row.addStack(); c.layoutVertically(); c.spacing = gap
+    for (const x of part) koRankRow(c, x, (INNER - 12) / 2, F_SUB, 12)
+  }
+  w.addSpacer()
+}
+function koRankLarge(w, d) {
+  header(w, d, "Tabellone", false, true)
+  const s = pickRanking(koRanking(d), 30), per = Math.ceil(s.length / 2)
+  const size = per > 12 ? 9.5 : F_SUB
+  w.addSpacer(8)
+  const row = w.addStack(); row.topAlignContent(); row.spacing = 8
+  const gap = Math.max(1, Math.min(6, (LRG.h - 40 - per * (size + 5)) / Math.max(1, per - 1)))
+  for (const part of [s.slice(0, per), s.slice(per)]) {
+    const c = row.addStack(); c.layoutVertically(); c.spacing = gap
+    for (const x of part) koRankRow(c, x, (LRG.w - 8) / 2, size, 16)
+  }
+  w.addSpacer()
+}
+
+// La sfida della squadra nel suo ultimo turno: andata e ritorno su due righe (piccoli senza prossima partita)
+function koTieBlock(stack, ks) {
+  const legs = ks.tie.legs || [ks.tie]
+  const tot = ks.detail && !/^andata/.test(ks.detail) ? ` · ${ks.detail}` : ""
+  sectionLabel(stack, `${ks.round}${tot}`).minimumScaleFactor = 0.8
+  stack.addSpacer(3)
+  const box = stack.addStack(); box.layoutVertically(); box.spacing = 3
+  for (const m of legs) {
+    if (m.sets) { lastRow(box, m, false); continue }
+    const r = box.addStack(); r.centerAlignContent(); r.spacing = 4; r.url = matchUrl(m)
+    txt(r, shortWhen(m), F_SUB, C.sub, "semibold")
+    const o = txt(r, `${isMine(m.home) ? "vs" : "@"} ${opp(m)}`, F_TXT, C.text, "semibold"); o.minimumScaleFactor = 0.7
+  }
+}
+
 function koColor(st) { return st.state === "won" ? C.win : st.state === "out" ? C.lose : C.hlText }
 
 function myStanding(d) { return TEAM ? d.standings.find(s => isMine(s.name)) : null }
