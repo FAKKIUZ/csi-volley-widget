@@ -2592,14 +2592,16 @@ function koPath(stack, d, width) {
     const r = box.addStack(); r.centerAlignContent(); r.spacing = 4; r.size = new Size(width, 0)
     r.url = matchUrl(t.legs ? t.legs[t.legs.length - 1] : t)
     // colonne fisse: turno, avversario (senza logo, così il nome entra), esito a destra
-    cell(r, roundShort(label), 42, Font.semiboldSystemFont(9), C.sub, "left")
+    // testi semplici, senza celle a larghezza fissa: nelle celle iOS riserva ~8 punti a ogni spaziatore
+    // e i nomi si tagliavano ("1° turno" e "2° turno" sono lunghi uguali, quindi restano allineati)
+    txt(r, roundShort(label), 9, C.sub, "semibold")
     const o = isMine(t.home) ? t.away : t.home
     txt(r, ab[o] || o, F_SUB, C.text)
     r.addSpacer()
     const det = tieDetail(t), next = (t.legs || [t]).find(m => !m.sets && !m.tbd)
     const won = t.winner && isMine(t.winner), lost = t.winner && !won
     const right = det && !/^andata/.test(det) ? det.replace(/^tot\. /, "") : next ? shortWhen(next) : det
-    cell(r, right || "–", 46, Font.semiboldSystemFont(9), won ? C.win : lost ? C.lose : C.sub, "right")
+    txt(r, right || "–", 9, won ? C.win : lost ? C.lose : C.sub, "semibold")
   }
 }
 
