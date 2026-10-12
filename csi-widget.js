@@ -1517,18 +1517,19 @@ function eventText(e) {
 function minText(e) { return e.min ? `${e.half === 2 ? "2T " : ""}${e.min}'` : "" }
 
 // tabellone: stemma · punteggio · stemma, nomi sotto
-function lastScoreboard(stack, m, logoSize, scoreSize, nameSize, width) {
+// names: nomi da mostrare (nei formati stretti le abbreviazioni dei risultati piccoli, es. "Tavernola")
+function lastScoreboard(stack, m, logoSize, scoreSize, nameSize, width, names) {
   const box = stack.addStack(); box.layoutVertically(); box.spacing = 3
   if (width) box.size = new Size(width, 0)
   const top = box.addStack(); top.centerAlignContent()
-  const half = width ? Math.floor((width - scoreSize * 3.2) / 2) : 0
+  const half = width ? Math.floor((width - scoreSize * 2.8) / 2) : 0
+  // niente spaziatori (iOS ne riserva una larghezza minima): logo e nome stanno al centro della loro metà
   const side = (name, mine) => {
-    const s = top.addStack(); s.layoutVertically(); s.centerAlignContent(); s.spacing = 3
+    const s = top.addStack(); s.layoutVertically(); s.spacing = 3
     if (half) s.size = new Size(half, 0)
-    const l = s.addStack(); l.addSpacer(); logo(l, name, logoSize); l.addSpacer()
-    const n = s.addStack(); n.addSpacer()
-    const t = txt(n, name, nameSize, mine ? C.hlText : C.text, mine ? "bold" : "semibold"); t.minimumScaleFactor = 0.75; t.centerAlignText()
-    n.addSpacer()
+    const l = s.addStack(); if (half) l.size = new Size(half, 0); logo(l, name, logoSize)
+    const n = s.addStack(); if (half) n.size = new Size(half, 0)
+    const t = txt(n, (names && names[name]) || name, nameSize, mine ? C.hlText : C.text, mine ? "bold" : "semibold"); t.minimumScaleFactor = 0.75; t.centerAlignText()
   }
   side(m.home, isMine(m.home))
   const sc = top.addStack(); sc.centerAlignContent()
@@ -1552,13 +1553,14 @@ function lastSmall(w, d, t) {
   w.url = m.href
   header(w, d, "Ultima partita", true)
   w.addSpacer()
-  lastScoreboard(w, m, 28, 20, 9.5, INNER_SMALL)
+  lastScoreboard(w, m, 28, 18, 9.5, INNER_SMALL, shortNames(allTeams(d)))
   w.addSpacer()
   const b = w.addStack(); b.centerAlignContent(); b.spacing = 5
   b.addSpacer()
   const rs = res(m), chip = b.addStack(); chip.setPadding(1, 4, 1, 4); chip.cornerRadius = 4; chip.backgroundColor = resColor(rs)
   const ct = chip.addText(rs); ct.font = Font.boldRoundedSystemFont(F_SUB); ct.textColor = Color.white()
-  txt(b, `${dayName(m.ts)} ${fmtDate(m.ts)}${m.ufficioso ? " · ufficioso" : ""}`, F_SUB, m.ufficioso ? C.uff : C.sub)
+  // ufficioso: lo dice già il punteggio in rosso
+  txt(b, `${dayName(m.ts)} ${fmtDate(m.ts)}`, F_SUB, m.ufficioso ? C.uff : C.sub)
   b.addSpacer()
 }
 
@@ -1571,7 +1573,7 @@ function lastMedium(w, d, t, info) {
   const row = w.addStack(); row.centerAlignContent(); row.spacing = 10
   const leftW = Math.round(MED.w * 0.5)
   const l = row.addStack(); l.layoutVertically(); l.spacing = 4; l.size = new Size(leftW, 0)
-  lastScoreboard(l, m, 26, 18, F_SUB, leftW)
+  lastScoreboard(l, m, 26, 18, F_SUB, leftW, shortNames(allTeams(d)))
   const when = l.addStack(); when.addSpacer()
   const v = venueOf(d, m)
   txt(when, `${dayName(m.ts)} ${fmtDate(m.ts)}${v ? " · " + (venueCity(v) || venueName(v)) : ""}`, 9, m.ufficioso ? C.uff : C.sub).minimumScaleFactor = 0.8
@@ -1625,7 +1627,8 @@ function lastLarge(w, d, t, info) {
   if (v) { const l2 = box.addStack(); l2.url = mapsUrl(v); l2.addSpacer(); txt(l2, venueShort(v), 9, C.sub).minimumScaleFactor = 0.8; l2.addSpacer() }
   let avail = LRG.h - 30 - 8 - 92 - (v ? 12 : 0)
   const prev = info.prev.slice(0, CALCIO && info.events.length > 6 ? 2 : 3)
-  const prevH = prev.length ? 14 + 4 + prev.length * 21 + 10 : 0
+  // altezze misurate sul 12 Pro: precedenti ~16 + 17 a riga, righe della cronaca ~16
+  const prevH = prev.length ? 16 + prev.length * 17 + 6 : 0
   w.addSpacer(10)
   if (!CALCIO) {
     sectionLabel(w, "Set"); w.addSpacer(4)
@@ -1643,14 +1646,35 @@ function lastLarge(w, d, t, info) {
       nc.addSpacer()
       m.parziali.forEach(p => { const won = p[sd] > p[1 - sd]; cell(rw, p[sd], cw, won ? Font.boldRoundedSystemFont(F_TXT) : Font.systemFont(F_TXT), won ? C.text : C.sub, "center") })
     })
+    // andamento: una barra per set, divisa in proporzione ai punti (in colore la squadra seguita)
+    if (n) {
+      w.addSpacer(10)
+      const tot = [0, 1].map(k => m.parziali.reduce((a, p) => a + p[k], 0))
+      const hd = w.addStack(); hd.centerAlignContent()
+      sectionLabel(hd, "Andamento"); hd.addSpacer()
+      txt(hd, `punti ${tot[0]} - ${tot[1]}`, 9, C.sub, "semibold")
+      w.addSpacer(4)
+      const bars = w.addStack(); bars.layoutVertically(); bars.spacing = 4
+      const BW = LRG.w - 2 * 26 - 16
+      m.parziali.forEach((p, i) => {
+        const rw = bars.addStack(); rw.centerAlignContent(); rw.spacing = 8
+        const hw = p[0] > p[1]
+        cell(rw, p[0], 26, hw ? Font.boldRoundedSystemFont(F_SUB) : Font.systemFont(F_SUB), hw ? C.text : C.sub, "center")
+        const bar = rw.addStack(); bar.size = new Size(BW, 8); bar.cornerRadius = 4
+        const a = Math.max(4, Math.round(BW * p[0] / Math.max(1, p[0] + p[1])))
+        const L = bar.addStack(); L.size = new Size(a, 8); L.backgroundColor = isMine(m.home) ? C.accent : C.chip
+        const R = bar.addStack(); R.size = new Size(BW - a, 8); R.backgroundColor = isMine(m.away) ? C.accent : C.chip
+        cell(rw, p[1], 26, !hw ? Font.boldRoundedSystemFont(F_SUB) : Font.systemFont(F_SUB), !hw ? C.text : C.sub, "center")
+      })
+    }
   } else {
     sectionLabel(w, "Cronaca"); w.addSpacer(4)
     let ev = info.events
     if (!ev.length) txt(w, "Cronaca non disponibile", F_SUB, C.sub)
-    const rows = Math.max(2, Math.floor((avail - 10 - 18 - prevH) / 17))
-    // troppi eventi: prima si tolgono le ammonizioni, poi la riga di fine tempo; i gol restano sempre,
-    // e solo se non bastano ancora si tengono gli ultimi
-    if (ev.length > rows) ev = ev.filter(e => e.type !== "giallo")
+    const rows = Math.max(2, Math.floor((avail - 10 - 16 - prevH) / 16))
+    // troppi eventi: si tolgono le ammonizioni una alla volta (dalle ultime), poi la riga di fine tempo;
+    // i gol restano sempre, e solo se non bastano ancora si tengono gli ultimi
+    while (ev.length > rows && ev.some(e => e.type === "giallo")) { const i = ev.map(e => e.type).lastIndexOf("giallo"); ev = ev.filter((_, k) => k !== i) }
     if (ev.length > rows) ev = ev.filter(e => e.type !== "fine")
     if (ev.length > rows) ev = ev.slice(-rows)
     const list = w.addStack(); list.layoutVertically(); list.spacing = 2
