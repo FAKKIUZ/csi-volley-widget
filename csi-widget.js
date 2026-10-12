@@ -1633,8 +1633,13 @@ function lastMedium(w, d, t, info) {
     })
     if (!m.parziali.length) txt(r, "—", F_TXT, C.sub)
   } else {
-    sectionLabel(r, "Gol")
     const goals = info.events.filter(e => e.type === "gol")
+    // "GOL" centrato sopra la colonna dei punteggi, come "SET" nel volley
+    if (goals.length) {
+      const lb = r.addStack(); lb.spacing = 0
+      lb.addSpacer(38 + 4)
+      const lc = lb.addStack(); lc.size = new Size(22, 0); sectionLabel(lc, "Gol")
+    } else sectionLabel(r, "Gol")
     if (!goals.length) txt(r, info.events.length ? "nessun gol" : "cronaca non disponibile", F_SUB, C.sub)
     // fino a 6 righe; se i gol sono di più, due per riga
     const per = goals.length > 6 ? 2 : 1
