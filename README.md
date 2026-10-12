@@ -64,11 +64,12 @@ La **panoramica** cambia con la dimensione del widget:
 - **grande**: scheda della squadra, giornata in corso e classifica completa.
 
 La vista **ultima** mostra l'ultima partita giocata dalla tua squadra:
-- **piccolo**: stemmi, punteggio, esito (V/N/P), data e giornata; sotto i parziali dei set (pallavolo)
-  oppure il risultato del primo tempo e i marcatori della tua squadra, se il CSI li inserisce (calcio);
-- **medio**: accanto al punteggio l'andamento dei set, una barra per set con i punti ai lati (pallavolo),
-  oppure la linea del tempo dei gol (un pallino per gol, arancione quelli della tua squadra) e sotto i gol
-  con il minuto (calcio);
+- **piccolo**: stemmi, punteggio, esito (V/N/P), data e giornata; in mezzo l'andamento dei set, una barra
+  per set con i punti ai lati (pallavolo), oppure la linea del tempo dei gol, il risultato del primo tempo e i
+  marcatori della tua squadra, se il CSI li inserisce (calcio);
+- **medio**: accanto al punteggio l'andamento dei set (pallavolo), oppure la linea del tempo dei gol e sotto
+  i gol con il minuto (calcio). Nella linea del tempo ogni gol è un pallino, arancione quelli della tua squadra;
+  i minuti del secondo tempo sono contati dall'inizio della partita (23' del secondo tempo → 68');
 - **grande**: scheda della partita, tabella dei set o cronaca (gol, ammonizioni, fine primo tempo) e i
   precedenti tra le due squadre. I nomi dei marcatori compaiono quando il CSI li inserisce sul sito.
   Toccando il widget si apre la pagina della partita.
