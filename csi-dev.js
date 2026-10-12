@@ -992,7 +992,7 @@ function teamData(d) {
   const pl = mine.filter(m => m.sets).sort((a, b) => b.ts - a.ts)
   // in fondo le partite con data da definire (es. rinviate): compaiono nel calendario ma non sono mai la "prossima"
   const up = upcoming(d).filter(isMyMatch).concat(mine.filter(m => m.tbd && !m.sets))
-  return { me: myStanding(d), pl, up, last: pl[0], next: up.find(m => !m.tbd), form: pl.slice(0, 5).reverse().map(res) }
+  return { me: myStanding(d), pl, up, last: pl[0], next: up.find(m => !m.tbd), form: pl.slice(0, 5).map(res) } // forma: la più recente a sinistra
 }
 function won(m) { return isMine(m.home) ? m.sets[0] > m.sets[1] : m.sets[1] > m.sets[0] }
 // esito per la squadra seguita: "V" vittoria, "N" pareggio (solo calcio), "P" sconfitta
@@ -1020,7 +1020,7 @@ function countdown(ts) {
   return n <= 0 ? "oggi" : n === 1 ? "domani" : `tra ${n} giorni`
 }
 
-// Ultime 5 partite: V verde / P rossa, caselle vuote finché non si gioca
+// Ultime 5 partite, la più recente a sinistra: V verde / N grigia / P rossa, caselle vuote finché non si gioca
 function formDots(stack, form, size) {
   const r = stack.addStack(); r.centerAlignContent(); r.spacing = 3
   const l = txt(r, "FORMA", 9, C.sub, "semibold")
