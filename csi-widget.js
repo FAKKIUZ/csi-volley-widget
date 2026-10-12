@@ -1592,72 +1592,51 @@ function lastSmall(w, d, t, info) {
   b.addSpacer()
 }
 
-// medio: niente intestazione (come Squadra e Panoramica medi), due colonne alte quanto il widget.
-// A sinistra etichetta, tabellone ed esito; a destra i set o i gol, allineati in alto con l'etichetta.
 function lastMedium(w, d, t, info) {
   const m = t.last
   if (!m) return noLastWidget(w, d, true)
   w.url = m.href
-  w.setPadding(12, 11, 12, 11)
-  const W = MED.w + 6, H = MED.h - 2
-  const row = w.addStack(); row.topAlignContent(); row.spacing = 8; row.size = new Size(W, H)
-  const leftW = Math.round((W - 17) / 2), rightW = W - 17 - leftW
-  const ab = shortNames(allTeams(d)), nm = {}
-  for (const n of [m.home, m.away]) nm[n] = compactName(ab[n] || n, 10, true)
-  const gn = (String(m.giornata).match(/(\d+)\s*$/) || [])[1]
-  const gl = gn ? ` · ${/ritorno/i.test(m.giornata) ? "Rit. " : ""}G${gn}` : ""
-
-  const l = row.addStack(); l.layoutVertically(); l.size = new Size(leftW, H)
-  sectionLabel(l, `Ultima partita${gl}`)
-  l.addSpacer()
-  lastScoreboard(l, m, 34, 24, F_SUB, leftW, nm)
-  l.addSpacer()
-  const b = l.addStack(); b.centerAlignContent(); b.spacing = 5
-  const rs = res(m), chip = b.addStack(); chip.setPadding(1, 4, 1, 4); chip.cornerRadius = 4; chip.backgroundColor = resColor(rs)
-  const ct = chip.addText(rs); ct.font = Font.boldRoundedSystemFont(F_SUB); ct.textColor = Color.white()
+  header(w, d, "Ultima partita", true)
+  // stacco fisso sotto l'intestazione e spazio libero in fondo: il contenuto resta vicino al titolo
+  w.addSpacer(8)
+  const row = w.addStack(); row.centerAlignContent(); row.spacing = 10
+  const leftW = Math.round(MED.w * 0.5)
+  const l = row.addStack(); l.layoutVertically(); l.spacing = 4; l.size = new Size(leftW, 0)
+  lastScoreboard(l, m, 26, 18, F_SUB, leftW, shortNames(allTeams(d)))
+  const when = l.addStack(); when.addSpacer()
   const v = venueOf(d, m)
-  const dt = txt(b, `${dayName(m.ts)} ${fmtDate(m.ts)}${v ? " · " + (venueCity(v) || venueName(v)) : ""}`, F_SUB, m.ufficioso ? C.uff : C.sub); dt.minimumScaleFactor = 0.75
-
-  const sep = row.addStack(); sep.size = new Size(1, H); sep.backgroundColor = C.chip
-
-  const r = row.addStack(); r.layoutVertically(); r.size = new Size(rightW, H)
+  txt(when, `${dayName(m.ts)} ${fmtDate(m.ts)}${v ? " · " + (venueCity(v) || venueName(v)) : ""}`, 9, m.ufficioso ? C.uff : C.sub).minimumScaleFactor = 0.8
+  when.addSpacer()
+  const sep = row.addStack(); sep.size = new Size(1, MED.h - 44); sep.backgroundColor = C.chip
+  const r = row.addStack(); r.layoutVertically(); r.spacing = 2
   if (!CALCIO) {
     sectionLabel(r, "Set")
-    r.addSpacer(4)
-    // i set si distribuiscono su tutta l'altezza
     m.parziali.forEach((p, i) => {
-      if (i) r.addSpacer()
       const s = r.addStack(); s.centerAlignContent(); s.spacing = 6
-      cell(s, `${i + 1}°`, 16, Font.semiboldSystemFont(9), C.sub, "left")
+      txt(s, `${i + 1}°`, 9, C.sub, "semibold")
       const hw = p[0] > p[1]
-      cell(s, p[0], 22, hw ? Font.boldRoundedSystemFont(F_TXT) : Font.mediumRoundedSystemFont(F_TXT), hw ? C.text : C.sub, "center")
+      txt(s, p[0], F_TXT, hw ? C.text : C.sub, hw ? "bold" : "regular")
       txt(s, "-", F_TXT, C.sub)
-      cell(s, p[1], 22, !hw ? Font.boldRoundedSystemFont(F_TXT) : Font.mediumRoundedSystemFont(F_TXT), !hw ? C.text : C.sub, "center")
+      txt(s, p[1], F_TXT, hw ? C.sub : C.text, hw ? "regular" : "bold")
     })
     if (!m.parziali.length) txt(r, "—", F_TXT, C.sub)
-    r.addSpacer()
   } else {
     sectionLabel(r, "Gol")
-    r.addSpacer(4)
-    const ev = info.events
-    const goals = ev.filter(e => e.type === "gol")
-    if (!goals.length) txt(r, ev.length ? "nessun gol" : "cronaca non disponibile", F_SUB, C.sub)
-    // fino a 5 righe; se i gol sono di più, due per riga
-    const per = goals.length > 5 ? 2 : 1
-    const list = r.addStack(); list.layoutVertically(); list.spacing = 4
-    for (let i = 0; i < goals.length && i < 10; i += per) {
-      const s = list.addStack(); s.centerAlignContent(); s.spacing = 6
+    const goals = info.events.filter(e => e.type === "gol")
+    if (!goals.length) txt(r, info.events.length ? "nessun gol" : "cronaca non disponibile", F_SUB, C.sub)
+    // fino a 6 righe; se i gol sono di più, due per riga
+    const per = goals.length > 6 ? 2 : 1
+    for (let i = 0; i < goals.length && i < 12; i += per) {
+      const s = r.addStack(); s.centerAlignContent(); s.spacing = 6
       for (const e of goals.slice(i, i + per)) {
-        const team = e.side === "home" ? m.home : m.away, mine = isMine(team)
-        cell(s, minText(e), 30, Font.semiboldSystemFont(9), C.sub, "left")
-        txt(s, e.score, F_SUB, mine ? C.hlText : C.text, mine ? "bold" : "regular")
-        if (per === 1) { const g = txt(s, e.name ? e.name : (nm[team] || team), F_SUB, mine ? C.hlText : C.text, mine ? "semibold" : "regular"); g.minimumScaleFactor = 0.8 }
+        txt(s, minText(e), 9, C.sub, "semibold")
+        const who = e.name || (e.side === "home" ? m.home : m.away)
+        const mine = isMine(e.side === "home" ? m.home : m.away)
+        const g = txt(s, `${e.score}${per === 1 ? "  " + who : ""}`, F_SUB, mine ? C.hlText : C.text, mine ? "semibold" : "regular"); g.minimumScaleFactor = 0.8
       }
     }
-    r.addSpacer()
-    const ht = ev.find(e => e.type === "fine")
-    if (ht) txt(r, `1° tempo ${ht.score}`, F_SUB, m.ufficioso ? C.uff : C.sub, "semibold")
   }
+  w.addSpacer()
 }
 
 function lastLarge(w, d, t, info) {
