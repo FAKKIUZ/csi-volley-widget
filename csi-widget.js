@@ -1576,6 +1576,14 @@ function lastSmall(w, d, t, info) {
   } else if (CALCIO) {
     const ev = (info && info.events) || []
     const side = isMine(m.home) ? "home" : "away"
+    // calcio: la partita come una linea del tempo, due tempi divisi a metà, un pallino per ogni gol
+    // (arancione i gol della tua squadra, grigio quelli degli avversari)
+    const goals = ev.filter(e => e.type === "gol")
+    if (goals.length) {
+      w.addSpacer(6)
+      const img = goalTimeline(goals, side, INNER_SMALL - 16, 12)
+      if (img) { const rw = w.addStack(); rw.addSpacer(); const i = rw.addImage(img); i.imageSize = new Size(INNER_SMALL - 16, 12); rw.addSpacer() }
+    }
     const mine = ev.filter(e => e.type === "gol" && e.side === side && e.name)
     if (mine.length) lines.push("⚽︎ " + mine.map(e => `${e.name.split(/\s+/)[0]} ${e.min}'`).join(" · "))
     const ht = ev.find(e => e.type === "fine")
@@ -1599,6 +1607,26 @@ function lastSmall(w, d, t, info) {
   const gl = gn ? ` · ${/ritorno/i.test(m.giornata) ? "Rit. " : ""}G${gn}` : ""
   const dt = txt(b, `${dayName(m.ts)} ${fmtDate(m.ts)}${gl}`, F_SUB, m.ufficioso ? C.uff : C.sub); dt.minimumScaleFactor = 0.85
   b.addSpacer()
+}
+
+// Linea del tempo dei gol (immagine): base grigia, tacca a metà per l'intervallo, pallini sui minuti
+function goalTimeline(goals, side, width, height) {
+  try {
+    const ctx = new DrawContext()
+    ctx.size = new Size(width, height); ctx.opaque = false; ctx.respectScreenScale = true
+    const y = height / 2, R = Math.min(4, height / 2 - 1), pad = R + 1, L = width - 2 * pad
+    const grey = new Color("#94A3B8")
+    ctx.setFillColor(new Color("#94A3B8", 0.35)); ctx.fillRect(new Rect(pad, y - 1, L, 2))
+    ctx.setFillColor(new Color("#94A3B8", 0.8)); ctx.fillRect(new Rect(pad + L / 2 - 0.5, y - 4, 1, 8))
+    // ogni tempo occupa metà linea; il minuto si colloca nella sua metà (oltre il 45' resta in fondo)
+    const xOf = e => pad + (e.half === 2 ? L / 2 : 0) + Math.min(1, (e.min || 0) / 45) * (L / 2)
+    for (const e of goals.slice().sort((a, b) => (a.side === side) - (b.side === side))) {
+      ctx.setFillColor(e.side === side ? C.accent : grey)
+      const x = xOf(e)
+      ctx.fillEllipse(new Rect(x - R, y - R, 2 * R, 2 * R))
+    }
+    return ctx.getImage()
+  } catch (e) { return null }
 }
 
 function lastMedium(w, d, t, info) {
