@@ -56,11 +56,24 @@ Ogni widget sceglie la sua vista: tieni premuto sul widget → **Modifica widget
 | i risultati della giornata della tua squadra | `risultati` |
 | la scheda della tua squadra | `squadra` |
 | un po' di tutto | `panoramica` |
+| l'ultima partita della tua squadra | `ultima` |
+| l'ultima partita della tua squadra, nel dettaglio | `ultima` |
 
 La **panoramica** cambia con la dimensione del widget:
 - **piccolo**: posizione, chi ti sta sopra e sotto in classifica, ultimo risultato e prossima partita;
 - **medio**: la tua squadra con ultima e prossima partita, accanto alla classifica;
 - **grande**: scheda della squadra, giornata in corso e classifica completa.
+
+L'**ultima** partita mostra punteggio e data (piccolo), poi i set del volley o i gol del calcio con il minuto
+(medio); nel grande la cronaca completa del calcio (gol, marcatori se il sito li inserisce, ammonizioni,
+fine primo tempo) o la tabella dei set del volley, e i precedenti tra le due squadre.
+
+La vista **ultima** mostra l'ultima partita giocata dalla tua squadra:
+- **piccolo**: stemmi, punteggio, esito (V/N/P) e data;
+- **medio**: accanto al punteggio i set (pallavolo) oppure i gol con il minuto (calcio);
+- **grande**: scheda della partita, tabella dei set o cronaca (gol, ammonizioni, fine primo tempo) e i
+  precedenti tra le due squadre. I nomi dei marcatori compaiono quando il CSI li inserisce sul sito.
+  Toccando il widget si apre la pagina della partita.
 
 ### Usi avanzati (facoltativo)
 Nel Parameter si possono aggiungere, separati da una **virgola**, un'altra squadra o un altro girone solo
