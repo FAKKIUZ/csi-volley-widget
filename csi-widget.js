@@ -1560,11 +1560,20 @@ function lastSmall(w, d, t, info) {
   lastScoreboard(w, m, 28, 18, 9.5, INNER_SMALL, nm)
   // una o due righe in più: volley i parziali dei set (3 + 2), calcio i marcatori della squadra e il primo tempo
   const lines = []
-  if (!CALCIO) {
-    const ps = m.parziali.map(p => `${p[0]}-${p[1]}`)
-    if (ps.length) lines.push(ps.slice(0, 3).join(" · "))
-    if (ps.length > 3) lines.push(ps.slice(3).join(" · "))
-  } else {
+  if (!CALCIO && m.parziali.length) {
+    // volley: l'andamento come nel grande, una barretta sottile per set divisa in proporzione ai punti
+    w.addSpacer(5)
+    const bars = w.addStack(); bars.layoutVertically(); bars.spacing = 3
+    const BW = INNER_SMALL - 16
+    for (const p of m.parziali) {
+      const rw = bars.addStack(); rw.addSpacer()
+      const bar = rw.addStack(); bar.size = new Size(BW, 4); bar.cornerRadius = 2
+      const a = Math.max(3, Math.round(BW * p[0] / Math.max(1, p[0] + p[1])))
+      const L = bar.addStack(); L.size = new Size(a, 4); L.backgroundColor = isMine(m.home) ? C.accent : C.chip
+      const R = bar.addStack(); R.size = new Size(BW - a, 4); R.backgroundColor = isMine(m.away) ? C.accent : C.chip
+      rw.addSpacer()
+    }
+  } else if (CALCIO) {
     const ev = (info && info.events) || []
     const side = isMine(m.home) ? "home" : "away"
     const mine = ev.filter(e => e.type === "gol" && e.side === side && e.name)
