@@ -686,7 +686,7 @@ function roundRowSmall(stack, m, ab, width) {
 // "Pol.Com.Tavernola" → "Tavern.", "Pcq 1971" → "Pcq", "Volley 2c" → "Vol. 2c", "San Pancrazio" → "S.Panc."
 function shortNames(names) {
   const GENERIC = /^(pol|polisportiva|com|or|oratorio|gso|gs|us|as|asd|ssd|a\.s\.d|s\.s\.d|volley|pallavolo|pvo|team|sport|ac|sc|usd|cs|csi)$/i
-  const GENERIC_CALCIO = /^(calcio|virtus|nova|real|atletico|sporting|fc|ssd|polisp|st|sant|santo)$/i
+  const GENERIC_CALCIO = /^(calcio|virtus|nova|real|atletico|sporting|fc|ssd|polisp|st|sant|santo|la|il|lo)$/i
   const MAX = 11 // senza loghi nel piccolo c'è posto per una parola intera (es. "S.Pancrazio", "Tavernola")
   const base = n => {
     const clean = String(n).trim()
@@ -1193,7 +1193,8 @@ function calendarRow(stack, m, stripe, isNext) {
   const o = txt(r, opp(m), 11, C.text); o.minimumScaleFactor = 0.85
   r.addSpacer()
   if (m.sets) {
-    const box = r.addStack(); box.size = new Size(50, 0); box.addSpacer()
+    // ai rigori ("V 4-2 rig.") serve un po' più di posto
+    const box = r.addStack(); box.size = new Size(m.dcr ? 74 : 50, 0); box.addSpacer()
     teamScore(box, m, 10)
   } else cell(r, m.tbd ? "–" : fmtTime(m.ts), 50, Font.mediumSystemFont(10), C.text, "center")
 }
@@ -1240,6 +1241,7 @@ function panoramaLarge(w, d) {
     logo(ring, TEAM, 30)
     const nm = top.addStack(); nm.layoutVertically(); nm.spacing = 0
     const n = txt(nm, TEAM, 13, C.text, "bold"); n.minimumScaleFactor = 0.7
+    if (d.ko) n.lineLimit = 2 // coppe: nome lungo su due righe ("Spartak / Telgate") invece dei puntini
     if (t.me) {
       const p = nm.addStack(); p.bottomAlignContent(); p.spacing = 4
       txt(p, `${t.me.pos}°`, 16, C.hlText, "bold")
@@ -1282,7 +1284,9 @@ function panoramaLarge(w, d) {
       const lr = r.addStack(); lr.centerAlignContent(); lr.spacing = 5; lr.url = matchUrl(m)
       teamScore(lr, m, F_TXT)
       logo(lr, opp(m), 13)
-      const o = txt(lr, `${isMine(m.home) ? "vs" : "@"} ${opp(m)}`, F_TXT, C.text, "semibold"); o.minimumScaleFactor = 0.75
+      // coppe: con "rig." il posto è meno, l'avversario perde le sigle iniziali ("Pol.Sorisolese" → "Sorisolese")
+      const on = d.ko ? compactName(opp(m), 10, true) : opp(m)
+      const o = txt(lr, `${isMine(m.home) ? "vs" : "@"} ${on}`, F_TXT, C.text, "semibold"); o.minimumScaleFactor = 0.75
     } else txt(r, "—", F_TXT, C.sub)
     r.addSpacer(5) // distanza fissa e moderata tra Ultima e Prossima
     const nx = t.next
@@ -2580,6 +2584,7 @@ function koPath(stack, d, width) {
   const g = giornate(d), ties = koTies(d), rows = []
   for (const x of g) { const t = (ties.get(x.label) || []).find(isMyMatch); if (t) rows.push([x.label, t]) }
   if (!rows.length) return
+  const ab = shortNames(allTeams(d)) // nomi brevi come nei risultati piccoli
   sectionLabel(stack, "Percorso")
   stack.addSpacer(3)
   const box = stack.addStack(); box.layoutVertically(); box.spacing = 3
@@ -2587,14 +2592,14 @@ function koPath(stack, d, width) {
     const r = box.addStack(); r.centerAlignContent(); r.spacing = 4; r.size = new Size(width, 0)
     r.url = matchUrl(t.legs ? t.legs[t.legs.length - 1] : t)
     // colonne fisse: turno, avversario (senza logo, così il nome entra), esito a destra
-    cell(r, roundShort(label), 40, Font.semiboldSystemFont(9), C.sub, "left", true)
+    cell(r, roundShort(label), 42, Font.semiboldSystemFont(9), C.sub, "left")
     const o = isMine(t.home) ? t.away : t.home
-    const n = txt(r, compactName(o, 12, true), F_SUB, C.text); n.minimumScaleFactor = 0.8
+    txt(r, ab[o] || o, F_SUB, C.text)
     r.addSpacer()
     const det = tieDetail(t), next = (t.legs || [t]).find(m => !m.sets && !m.tbd)
     const won = t.winner && isMine(t.winner), lost = t.winner && !won
     const right = det && !/^andata/.test(det) ? det.replace(/^tot\. /, "") : next ? shortWhen(next) : det
-    cell(r, right || "–", 42, Font.semiboldSystemFont(9.5), won ? C.win : lost ? C.lose : C.sub, "right", true)
+    cell(r, right || "–", 46, Font.semiboldSystemFont(9), won ? C.win : lost ? C.lose : C.sub, "right")
   }
 }
 
