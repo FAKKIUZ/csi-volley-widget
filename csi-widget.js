@@ -478,7 +478,8 @@ async function buildWidget(d, family, view) {
   if (view === "ultima") {
     if (!TEAM || !d.matches.some(isMyMatch)) return noTeamWidget(w)
     const t = teamData(d)
-    const info = t.last && family !== "small" ? await getMatchInfo(t.last) : { events: [], prev: [] }
+    // la pagina della partita serve a medio e grande, e al piccolo del calcio (marcatori e primo tempo)
+    const info = t.last && (family !== "small" || CALCIO) ? await getMatchInfo(t.last) : { events: [], prev: [] }
     ;[lastSmall, lastMedium, lastLarge][family === "small" ? 0 : family === "medium" ? 1 : 2](w, d, t, info)
     footer(w, d)
     return w
@@ -1547,20 +1548,47 @@ function noLastWidget(w, d, compact) {
   w.addSpacer()
 }
 
-function lastSmall(w, d, t) {
+function lastSmall(w, d, t, info) {
   const m = t.last
   if (!m) return noLastWidget(w, d, true)
   w.url = m.href
   header(w, d, "Ultima partita", true)
   w.addSpacer()
-  lastScoreboard(w, m, 28, 18, 9.5, INNER_SMALL, shortNames(allTeams(d)))
+  // nomi corti: abbreviazioni dei risultati piccoli, e senza sigle iniziali se ancora lunghi ("Or.Cividate" → "Cividate")
+  const ab = shortNames(allTeams(d)), nm = {}
+  for (const n of [m.home, m.away]) nm[n] = compactName(ab[n] || n, 9, true)
+  lastScoreboard(w, m, 28, 18, 9.5, INNER_SMALL, nm)
+  // una o due righe in più: volley i parziali dei set (3 + 2), calcio i marcatori della squadra e il primo tempo
+  const lines = []
+  if (!CALCIO) {
+    const ps = m.parziali.map(p => `${p[0]}-${p[1]}`)
+    if (ps.length) lines.push(ps.slice(0, 3).join(" · "))
+    if (ps.length > 3) lines.push(ps.slice(3).join(" · "))
+  } else {
+    const ev = (info && info.events) || []
+    const side = isMine(m.home) ? "home" : "away"
+    const mine = ev.filter(e => e.type === "gol" && e.side === side && e.name)
+    if (mine.length) lines.push("⚽︎ " + mine.map(e => `${e.name.split(/\s+/)[0]} ${e.min}'`).join(" · "))
+    const ht = ev.find(e => e.type === "fine")
+    if (ht) lines.push(`1° tempo ${ht.score}`)
+  }
+  if (lines.length) {
+    w.addSpacer(6)
+    for (const l of lines) {
+      const r = w.addStack(); r.addSpacer()
+      const tt = txt(r, l, 9, m.ufficioso ? C.uff : C.sub, "semibold"); tt.minimumScaleFactor = 0.75
+      r.addSpacer()
+    }
+  }
   w.addSpacer()
   const b = w.addStack(); b.centerAlignContent(); b.spacing = 5
   b.addSpacer()
   const rs = res(m), chip = b.addStack(); chip.setPadding(1, 4, 1, 4); chip.cornerRadius = 4; chip.backgroundColor = resColor(rs)
   const ct = chip.addText(rs); ct.font = Font.boldRoundedSystemFont(F_SUB); ct.textColor = Color.white()
-  // ufficioso: lo dice già il punteggio in rosso
-  txt(b, `${dayName(m.ts)} ${fmtDate(m.ts)}`, F_SUB, m.ufficioso ? C.uff : C.sub)
+  // ufficioso: lo dice già il punteggio in rosso; in fondo anche la giornata ("G1", "Rit. G3")
+  const gn = (String(m.giornata).match(/(\d+)\s*$/) || [])[1]
+  const gl = gn ? ` · ${/ritorno/i.test(m.giornata) ? "Rit. " : ""}G${gn}` : ""
+  const dt = txt(b, `${dayName(m.ts)} ${fmtDate(m.ts)}${gl}`, F_SUB, m.ufficioso ? C.uff : C.sub); dt.minimumScaleFactor = 0.85
   b.addSpacer()
 }
 
