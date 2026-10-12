@@ -1,7 +1,7 @@
 # CSI Widget — pallavolo e calcio sull'iPhone
 
 Widget per **Scriptable** (iOS) con classifica, risultati, la propria squadra e la sua ultima partita di un girone CSI di
-**pallavolo** o di **calcio** (a 11, a 7, a 5), letti dalla pagina pubblica
+**pallavolo** o di **calcio** (a 11, a 7, a 5), anche di **coppe e fasi finali**, letti dalla pagina pubblica
 [live.centrosportivoitaliano.it](https://live.centrosportivoitaliano.it).
 Lo sport si riconosce da solo dal link del girone.
 Progetto amatoriale, non ufficiale e non collegato al Centro Sportivo Italiano.
@@ -74,6 +74,18 @@ La vista **ultima** mostra l'ultima partita giocata dalla tua squadra:
   precedenti tra le due squadre. I nomi dei marcatori compaiono quando il CSI li inserisce sul sito.
   Toccando il widget si apre la pagina della partita.
 
+### Coppe e fasi finali
+Con il link di una coppa o di una fase finale (turni a eliminazione) i widget si adattano da soli:
+- al posto di "Giornata N" compare il nome del turno ("Primo turno", "Quarti", "Semifinali", "Finale");
+- **andata e ritorno** stanno su una riga sola ("2-0 · 1-0"), in grassetto chi passa il turno; ai rigori
+  "rig. 4-2". Nell'**ultima partita** ai rigori c'è il risultato della partita e sotto quello dei rigori;
+- **classifica** diventa il **Tabellone**: fin dove è arrivata ogni squadra (🏆, 2°, poi chi è ancora in
+  corsa con il turno, chi è qualificata e chi è stata eliminata, in grigio);
+- **squadra** e **panoramica** mostrano lo stato della squadra al posto di posizione e punti ("Secondo turno",
+  "Qualificata", "Eliminata · Semifinali", "Vincitrice") e il **Percorso**: un turno per riga con avversario
+  ed esito;
+- se il turno ha poche partite (es. la finale), sotto compaiono i turni precedenti.
+
 ### Usi avanzati (facoltativo)
 Nel Parameter si possono aggiungere, separati da una **virgola**, un'altra squadra o un altro girone solo
 per quel widget: `risultati, Pcq 1971` oppure *link del girone*`, Nome squadra`.
@@ -93,6 +105,7 @@ In alternativa, per un solo widget, nel Parameter si possono scrivere anche il l
   (su iPhone: Impostazioni → App → App predefinite → Navigazione). Nel piccolo iOS permette un solo tocco:
   apre la pagina del girone. Fa eccezione la vista **ultima**, che in ogni dimensione apre la pagina della partita.
 - I risultati in **rosso** non sono ancora ufficiali, come sul sito.
+- **Forma**: le ultime 5 partite, la più recente a sinistra; i pallini vuoti sono quelle ancora da giocare.
 - Il risultato della tua squadra si legge così: bollino **V** (vittoria, verde), **N** (pareggio, grigio,
   solo calcio) o **P** (sconfitta, rossa), poi il punteggio sempre in ordine casa-ospite con il
   **vostro numero in grassetto e colorato**. `@` vuol dire che avete giocato fuori casa, `vs` in casa.
