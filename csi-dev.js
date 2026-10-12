@@ -754,10 +754,27 @@ function resultsLarge(w, d) {
     const lay = rowLayout(cur, LRG.w, 11)
     cur.forEach(m => matchRow(list, m, LRG.w, 11, withP, true, lay))
   }
-  // coppe: senza un turno dopo, sotto c'è quello prima (es. Finale e sopra le Semifinali)
-  if (d.ko && g.cur && !g.next) {
+  // coppe: sotto il turno mostrato, quello dopo (se c'è) e poi i turni prima, finché c'è posto
+  // (es. Finale, Semifinali, Quarti…)
+  if (d.ko && g.cur) {
     const all = giornate(d), i = all.findIndex(x => x.label === g.cur.label)
-    if (i > 0) g.next = all[i - 1]
+    const more = (g.next ? [g.next] : []).concat(all.slice(0, Math.max(0, i)).reverse())
+    for (const x of more) {
+      const list0 = roundList(d, x)
+      if (budget - 6 - 14 - rowH(list0[0]) < 0) break
+      budget -= 6 + 14
+      const ms = []
+      for (const m of pickMatches(list0, list0.length)) { if (budget - rowH(m) < 0) break; budget -= rowH(m); ms.push(m) }
+      const show = pickMatches(list0, ms.length)
+      w.addSpacer(6)
+      sectionLabel(w, prettyGiornata(x.label))
+      w.addSpacer(3)
+      const list = w.addStack(); list.layoutVertically(); list.spacing = 3
+      const lay = rowLayout(show, LRG.w, 11)
+      show.forEach(m => matchRow(list, m, LRG.w, 11, withP, true, lay))
+    }
+    w.addSpacer()
+    return
   }
   if (g.next && params.prossima !== "no") {
     budget -= 6 + 14
@@ -1034,8 +1051,11 @@ function teamCard(stack, d, t, logoSize, width, tight) {
   }
   const ks = koStatus(d)
   if (ks) {
-    txt(nm, ks.text, 14, koColor(ks), "bold").minimumScaleFactor = 0.75
-    if (ks.detail) txt(c, `${ks.round} · ${ks.detail}`, 10, C.sub).minimumScaleFactor = 0.85
+    // eliminata: "Eliminata" grande e il turno nella riga sotto (insieme non ci stanno)
+    const out = ks.state === "out" && /^Eliminata/.test(ks.text)
+    txt(nm, out ? "Eliminata" : ks.text, 14, koColor(ks), "bold").minimumScaleFactor = 0.75
+    const sub = [out || ks.detail ? ks.round : "", ks.detail].filter(Boolean).join(" · ")
+    if (sub) txt(c, sub, 10, C.sub).minimumScaleFactor = 0.85
   }
   if (t.me) txt(c, statLine(t.me), 10, C.sub).minimumScaleFactor = 0.85
   formDots(c, t.form, 11)
@@ -1249,8 +1269,10 @@ function panoramaLarge(w, d) {
     }
     const ks = koStatus(d)
     if (ks) {
-      txt(nm, ks.text, 11, koColor(ks), "bold").minimumScaleFactor = 0.75
-      if (ks.detail) txt(nm, ks.detail, F_SUB - 1, C.sub, "semibold")
+      const out = ks.state === "out" && /^Eliminata/.test(ks.text)
+      txt(nm, out ? "Eliminata" : ks.text, 11, koColor(ks), "bold").minimumScaleFactor = 0.75
+      const sub = [out ? ks.round : "", ks.detail].filter(Boolean).join(" · ")
+      if (sub) txt(nm, sub, F_SUB - 1, C.sub, "semibold").minimumScaleFactor = 0.8
     }
     const dr = l.addStack(); dotsOnly(dr, t.form, 9)
 
@@ -1329,6 +1351,24 @@ function panoramaLarge(w, d) {
     const lay = rowLayout(ms, LRG.w, F_TXT)
     lay.nameSize = Math.min(lay.nameSize, F_TXT)
     ms.forEach(m => matchRow(list, m, LRG.w, F_TXT, false, true, lay))
+    // coppe (niente classifica sotto): nello spazio che resta i turni prima, dal più recente
+    if (d.ko) {
+      let left = free - ms.length * 21
+      const all = giornate(d), i = all.findIndex(x => x.label === g.cur.label)
+      for (const x of all.slice(0, Math.max(0, i)).reverse()) {
+        const l0 = roundList(d, x).filter(m => !above.includes(m) && !(m.legs && m.legs.some(y => above.includes(y))))
+        const n = Math.min(l0.length, Math.floor((left - 22) / 21))
+        if (n < 1) break
+        left -= 22 + n * 21
+        w.addSpacer(6)
+        sectionLabel(w, prettyGiornata(x.label))
+        w.addSpacer(4)
+        const ls = w.addStack(); ls.layoutVertically(); ls.spacing = 2
+        const sh = pickMatches(l0, n), ly = rowLayout(sh, LRG.w, F_TXT)
+        ly.nameSize = Math.min(ly.nameSize, F_TXT)
+        sh.forEach(m => matchRow(ls, m, LRG.w, F_TXT, false, true, ly))
+      }
+    }
   }
 
   if (st.length) {
@@ -2544,7 +2584,8 @@ function koRankLarge(w, d) {
   const size = per > 12 ? 9.5 : F_SUB
   w.addSpacer(8)
   const row = w.addStack(); row.topAlignContent(); row.spacing = 8
-  const gap = Math.max(1, Math.min(6, (LRG.h - 40 - per * (size + 5)) / Math.max(1, per - 1)))
+  // poche squadre (es. 16 delle fasi finali): righe più distanziate, così riempiono il widget
+  const gap = Math.max(1, Math.min(14, (LRG.h - 48 - per * (size + 5)) / Math.max(1, per - 1)))
   for (const part of [s.slice(0, per), s.slice(per)]) {
     const c = row.addStack(); c.layoutVertically(); c.spacing = gap
     for (const x of part) koRankRow(c, x, (LRG.w - 8) / 2, size, 16)
