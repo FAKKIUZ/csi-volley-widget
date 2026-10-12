@@ -638,6 +638,15 @@ function resultsSmall(w, d) {
   const ab = shortNames(allTeams(d))
   const list = w.addStack(); list.layoutVertically(); list.spacing = 3
   for (const m of ms) roundRowSmall(list, m, ab)
+  // coppe: turno con poche partite (es. la finale): sotto il turno prima
+  let left = 5 - ms.length
+  for (const x of earlierRounds(d, g.cur)) {
+    if (left < 2) break
+    const sh = pickMatches(roundList(d, x), left - 1)
+    left -= 1 + sh.length
+    sectionLabel(list, roundTitle(x.label))
+    for (const m of sh) roundRowSmall(list, m, ab)
+  }
   w.addSpacer()
 }
 
@@ -731,6 +740,17 @@ function resultsMedium(w, d) {
   lay.nameSize = Math.min(lay.nameSize, F_TXT)
   shown.forEach(m => matchRow(list, m, INNER, F_TXT, false, true, lay))
   if (!ms.length) txt(list, "Nessuna partita", F_TXT, C.sub)
+  // coppe: se il turno ha poche partite (es. la finale) sotto c'è il turno prima; l'etichetta vale una riga
+  let left = 5 - shown.length
+  for (const x of earlierRounds(d, g.cur)) {
+    if (left < 2) break
+    const sh = pickMatches(roundList(d, x), left - 1)
+    left -= 1 + sh.length
+    list.addSpacer(2)
+    sectionLabel(list, roundTitle(x.label))
+    const ly = rowLayout(sh, INNER, F_TXT); ly.nameSize = Math.min(ly.nameSize, F_TXT)
+    sh.forEach(m => matchRow(list, m, INNER, F_TXT, false, true, ly))
+  }
   w.addSpacer()
 }
 
@@ -1457,9 +1477,14 @@ function panoramaMedium(w, d) {
   const l = row.addStack(); l.layoutVertically(); l.size = new Size(leftW, H)
   smallTeamTop(l, d, t)
   l.addSpacer()
-  if (t.last) { lastRow(l, t.last, false); l.addSpacer() }
-  if (t.next) { nextLines(l, t.next); venueLine(l, d, t.next) }
-  else txt(l, "Nessuna in calendario", F_SUB, C.sub)
+  if (d.ko && !t.next) {
+    // coppe, squadra senza altre partite: il suo percorso al posto di ultima e prossima
+    koPath(l, d, leftW); l.addSpacer()
+  } else {
+    if (t.last) { lastRow(l, t.last, false); l.addSpacer() }
+    if (t.next) { nextLines(l, t.next); venueLine(l, d, t.next) }
+    else txt(l, "Nessuna in calendario", F_SUB, C.sub)
+  }
 
   const sep = row.addStack(); sep.size = new Size(1, H - 8); sep.backgroundColor = C.chip
 
@@ -1470,8 +1495,22 @@ function panoramaMedium(w, d) {
     const g = currentGiornata(d)
     sectionLabel(r, g.cur ? roundTitle(g.cur.label) : "Tabellone")
     const ms = pickMatches(roundList(d, g.cur), 4), ab = shortNames(allTeams(d))
-    const gap = Math.max(3, Math.min(10, (H - 13 - ms.length * 22) / Math.max(1, ms.length)))
+    // poche sfide nel turno (es. la finale): sotto il turno prima, con la sua etichetta
+    const extra = []
+    let left = 4 - ms.length
+    for (const x of earlierRounds(d, g.cur)) {
+      if (left < 2) break
+      const sh = pickMatches(roundList(d, x), left - 1)
+      left -= 1 + sh.length
+      extra.push([x, sh])
+    }
+    const rows = ms.length + extra.reduce((n, e) => n + e[1].length, 0)
+    const gap = Math.max(3, Math.min(10, (H - 13 - rows * 22 - extra.length * 14) / Math.max(1, rows)))
     for (const m of ms) { r.addSpacer(gap); roundRowSmall(r, m, ab, rightW) }
+    for (const [x, sh] of extra) {
+      r.addSpacer(gap); sectionLabel(r, roundTitle(x.label))
+      for (const m of sh) { r.addSpacer(3); roundRowSmall(r, m, ab, rightW) }
+    }
     r.addSpacer()
     return
   }
@@ -2491,6 +2530,13 @@ function makeTie(legs, later) {
   }
 }
 
+// Coppe: i turni prima di quello mostrato, dal più recente (per riempire i widget quando il turno ha poche partite)
+function earlierRounds(d, cur) {
+  if (!d.ko || !cur) return []
+  const all = giornate(d), i = all.findIndex(x => x.label === cur.label)
+  return all.slice(0, Math.max(0, i)).reverse()
+}
+
 // Partite da mostrare per un turno: nelle coppe una riga per sfida, nei campionati le partite
 function roundList(d, g) { return !g ? [] : d.ko ? (koTies(d).get(g.label) || g.matches) : g.matches }
 
@@ -2629,13 +2675,16 @@ function koPath(stack, d, width) {
   sectionLabel(stack, "Percorso")
   stack.addSpacer(3)
   const box = stack.addStack(); box.layoutVertically(); box.spacing = 3
-  for (const [label, t] of rows.slice(-4)) {
+  const shown = rows.slice(-4)
+  // colonna del turno larga quanto l'etichetta più lunga (+ i ~8 punti che iOS tiene per lo spaziatore)
+  const RW = Math.ceil(Math.max(...shown.map(([l]) => roundShort(l).length)) * 9 * 0.56) + 10
+  for (const [label, t] of shown) {
     const r = box.addStack(); r.centerAlignContent(); r.spacing = 4; r.size = new Size(width, 0)
     r.url = matchUrl(t.legs ? t.legs[t.legs.length - 1] : t)
     // colonne fisse: turno, avversario (senza logo, così il nome entra), esito a destra
     // testi semplici, senza celle a larghezza fissa: nelle celle iOS riserva ~8 punti a ogni spaziatore
     // e i nomi si tagliavano ("1° turno" e "2° turno" sono lunghi uguali, quindi restano allineati)
-    txt(r, roundShort(label), 9, C.sub, "semibold")
+    cell(r, roundShort(label), RW, Font.semiboldSystemFont(9), C.sub, "left")
     const o = isMine(t.home) ? t.away : t.home
     txt(r, ab[o] || o, F_SUB, C.text)
     r.addSpacer()
