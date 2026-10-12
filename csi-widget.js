@@ -1560,30 +1560,13 @@ function lastSmall(w, d, t, info) {
   lastScoreboard(w, m, 28, 18, 9.5, INNER_SMALL, nm)
   // una o due righe in più: volley i parziali dei set (3 + 2), calcio i marcatori della squadra e il primo tempo
   const lines = []
-  if (!CALCIO && m.parziali.length) {
-    // volley: l'andamento come nel grande, una barretta sottile per set divisa in proporzione ai punti
-    w.addSpacer(5)
-    const bars = w.addStack(); bars.layoutVertically(); bars.spacing = 3
-    const BW = INNER_SMALL - 16
-    for (const p of m.parziali) {
-      const rw = bars.addStack(); rw.addSpacer()
-      const bar = rw.addStack(); bar.size = new Size(BW, 4); bar.cornerRadius = 2
-      const a = Math.max(3, Math.round(BW * p[0] / Math.max(1, p[0] + p[1])))
-      const L = bar.addStack(); L.size = new Size(a, 4); L.backgroundColor = isMine(m.home) ? C.accent : C.chip
-      const R = bar.addStack(); R.size = new Size(BW - a, 4); R.backgroundColor = isMine(m.away) ? C.accent : C.chip
-      rw.addSpacer()
-    }
+  if (!CALCIO) {
+    const ps = m.parziali.map(p => `${p[0]}-${p[1]}`)
+    if (ps.length) lines.push(ps.slice(0, 3).join(" · "))
+    if (ps.length > 3) lines.push(ps.slice(3).join(" · "))
   } else if (CALCIO) {
     const ev = (info && info.events) || []
     const side = isMine(m.home) ? "home" : "away"
-    // calcio: la partita come una linea del tempo, due tempi divisi a metà, un pallino per ogni gol
-    // (arancione i gol della tua squadra, grigio quelli degli avversari)
-    const goals = ev.filter(e => e.type === "gol")
-    if (goals.length) {
-      w.addSpacer(6)
-      const img = goalTimeline(goals, side, INNER_SMALL - 16, 12)
-      if (img) { const rw = w.addStack(); rw.addSpacer(); const i = rw.addImage(img); i.imageSize = new Size(INNER_SMALL - 16, 12); rw.addSpacer() }
-    }
     const mine = ev.filter(e => e.type === "gol" && e.side === side && e.name)
     if (mine.length) lines.push("⚽︎ " + mine.map(e => `${e.name.split(/\s+/)[0]} ${e.min}'`).join(" · "))
     const ht = ev.find(e => e.type === "fine")
@@ -1654,19 +1637,22 @@ function lastMedium(w, d, t, info) {
   // la colonna destra non può superare lo spazio rimasto (margini minimi di 8 ai lati)
   const rightMax = MED.w - leftW - 2 * GAP - 1 - 16
   if (!CALCIO) {
-    // colonne fisse: numero del set a sinistra, poi punti · trattino · punti centrati, così il trattino
-    // sta sempre nello stesso punto su tutte le righe; "SET" centrato sopra i punteggi
-    const NW = 18, PW = 24, DW = 10, SP = 4
+    // andamento come nel grande: una barra per set divisa in proporzione ai punti (in arancione la tua
+    // squadra), con i punti ai lati; "SET" centrato sopra le barre
+    const PW = 20, BW = 64, SP = 5
     const lb = r.addStack(); lb.spacing = 0
-    lb.addSpacer(NW + SP)
-    const lc = lb.addStack(); lc.size = new Size(PW * 2 + DW + SP * 2, 0); sectionLabel(lc, "Set")
-    m.parziali.forEach((p, i) => {
+    lb.addSpacer(PW + SP)
+    const lc = lb.addStack(); lc.size = new Size(BW, 0); sectionLabel(lc, "Set")
+    r.addSpacer(2)
+    m.parziali.forEach(p => {
       const s = r.addStack(); s.centerAlignContent(); s.spacing = SP
-      cell(s, `${i + 1}°`, NW, Font.semiboldSystemFont(9), C.sub, "left")
       const hw = p[0] > p[1]
-      cell(s, p[0], PW, hw ? Font.boldSystemFont(F_TXT) : Font.systemFont(F_TXT), hw ? C.text : C.sub, "center")
-      cell(s, "-", DW, Font.systemFont(F_TXT), C.sub, "center")
-      cell(s, p[1], PW, hw ? Font.systemFont(F_TXT) : Font.boldSystemFont(F_TXT), hw ? C.sub : C.text, "center")
+      cell(s, p[0], PW, hw ? Font.boldSystemFont(F_SUB) : Font.systemFont(F_SUB), hw ? C.text : C.sub, "center")
+      const bar = s.addStack(); bar.size = new Size(BW, 6); bar.cornerRadius = 3
+      const a = Math.max(3, Math.round(BW * p[0] / Math.max(1, p[0] + p[1])))
+      const L = bar.addStack(); L.size = new Size(a, 6); L.backgroundColor = isMine(m.home) ? C.accent : C.chip
+      const R = bar.addStack(); R.size = new Size(BW - a, 6); R.backgroundColor = isMine(m.away) ? C.accent : C.chip
+      cell(s, p[1], PW, hw ? Font.systemFont(F_SUB) : Font.boldSystemFont(F_SUB), hw ? C.sub : C.text, "center")
     })
     if (!m.parziali.length) txt(r, "—", F_TXT, C.sub)
   } else {
@@ -1676,10 +1662,14 @@ function lastMedium(w, d, t, info) {
       const lb = r.addStack(); lb.spacing = 0
       lb.addSpacer(38 + 4)
       const lc = lb.addStack(); lc.size = new Size(22, 0); sectionLabel(lc, "Gol")
+      // la partita come una linea del tempo: due tempi divisi a metà, un pallino per gol
+      // (arancione quelli della tua squadra, grigio quelli degli avversari)
+      const img = goalTimeline(goals, isMine(m.home) ? "home" : "away", 112, 12)
+      if (img) { r.addSpacer(3); const i = r.addImage(img); i.imageSize = new Size(112, 12); r.addSpacer(3) }
     } else sectionLabel(r, "Gol")
     if (!goals.length) txt(r, info.events.length ? "nessun gol" : "cronaca non disponibile", F_SUB, C.sub)
-    // fino a 6 righe; se i gol sono di più, due per riga
-    const per = goals.length > 6 ? 2 : 1
+    // fino a 5 righe; se i gol sono di più, due per riga
+    const per = goals.length > 5 ? 2 : 1
     const whoOf = e => e.name || ab[e.side === "home" ? m.home : m.away] || (e.side === "home" ? m.home : m.away)
     const est = Math.max(0, ...goals.map(e => 38 + 4 + 22 + 4 + String(whoOf(e)).length * 5.5))
     if (per === 2 || est > rightMax) r.size = new Size(rightMax, 0)
