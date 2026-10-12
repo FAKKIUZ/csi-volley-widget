@@ -2586,15 +2586,15 @@ function koPath(stack, d, width) {
   for (const [label, t] of rows.slice(-4)) {
     const r = box.addStack(); r.centerAlignContent(); r.spacing = 4; r.size = new Size(width, 0)
     r.url = matchUrl(t.legs ? t.legs[t.legs.length - 1] : t)
-    cell(r, roundShort(label), 50, Font.semiboldSystemFont(9), C.sub, "left")
+    // colonne fisse: turno, avversario (senza logo, così il nome entra), esito a destra
+    cell(r, roundShort(label), 40, Font.semiboldSystemFont(9), C.sub, "left", true)
     const o = isMine(t.home) ? t.away : t.home
-    logo(r, o, 12)
-    const n = txt(r, compactName(o, 11, true), F_SUB, C.text); n.minimumScaleFactor = 0.85
+    const n = txt(r, compactName(o, 12, true), F_SUB, C.text); n.minimumScaleFactor = 0.8
     r.addSpacer()
     const det = tieDetail(t), next = (t.legs || [t]).find(m => !m.sets && !m.tbd)
     const won = t.winner && isMine(t.winner), lost = t.winner && !won
     const right = det && !/^andata/.test(det) ? det.replace(/^tot\. /, "") : next ? shortWhen(next) : det
-    txt(r, right || "–", F_SUB - 0.5, won ? C.win : lost ? C.lose : C.sub, "semibold")
+    cell(r, right || "–", 42, Font.semiboldSystemFont(9.5), won ? C.win : lost ? C.lose : C.sub, "right", true)
   }
 }
 
