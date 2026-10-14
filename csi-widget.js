@@ -2440,7 +2440,13 @@ function currentGiornata(d) {
   if (mine.length && !out) {
     const started = mine.filter(m => m.ts <= endToday.getTime())
     const focus = started.length ? started[started.length - 1] : mine[0]
-    const cur = g.find(x => x.label === focus.giornata)
+    let cur = g.find(x => x.label === focus.giornata)
+    // la giornata della prossima partita della squadra diventa quella mostrata appena è cominciata, anche se la
+    // prima partita giocata è di altre squadre. Solo se viene dopo l'ultima partita della squadra: un recupero
+    // di una giornata vecchia resta com'era (si passa dal giorno della partita)
+    const nm = mine.find(m => m.ts > endToday.getTime())
+    const ng = nm && nm.giornata !== focus.giornata ? g.find(x => x.label === nm.giornata) : null
+    if (cur && ng && ng.first > focus.ts && ng.matches.some(m => !m.tbd && m.ts <= Date.now())) cur = ng
     if (cur) {
       // sotto: la prima giornata (dopo quella mostrata) con partite ancora da giocare
       const open = g.filter(x => x !== cur && x.matches.some(m => !m.sets && !m.tbd && m.ts >= startToday.getTime()))
